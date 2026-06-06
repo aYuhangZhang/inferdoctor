@@ -1,0 +1,37 @@
+from __future__ import annotations
+
+from typing import Iterable, List
+
+from inferdoctor.core.models import CheckResult
+from inferdoctor.reporters.common import report_document
+
+
+def render_markdown(results: Iterable[CheckResult]) -> str:
+    result_list = list(results)
+    document = report_document(result_list)
+    lines: List[str] = [
+        "# InferDoctor Report",
+        "",
+        "Generated: `{0}`".format(document["generated_at"]),
+        "",
+        "| Check | Status | Summary |",
+        "| --- | --- | --- |",
+    ]
+    for result in result_list:
+        summary = result.summary.replace("|", "\\|")
+        lines.append(
+            "| {0} | **{1}** | {2} |".format(
+                result.name, result.status.value.upper(), summary
+            )
+        )
+
+    for result in result_list:
+        lines.extend(["", "## {0}".format(result.name), "", result.summary])
+        if result.details:
+            lines.extend(["", "**Details**", ""])
+            lines.extend("- {0}".format(item) for item in result.details)
+        if result.suggestions:
+            lines.extend(["", "**Suggestions**", ""])
+            lines.extend("- {0}".format(item) for item in result.suggestions)
+    lines.append("")
+    return "\n".join(lines)

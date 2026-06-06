@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inferdoctor"
+version = "0.1.0"
+description = "Lightweight diagnostics for local AI inference stacks."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+  { name = "InferDoctor contributors" },
+]
+keywords = [
+  "ai",
+  "cuda",
+  "diagnostics",
+  "dify",
+  "inference",
+  "nvidia",
+  "ollama",
+  "vllm",
+  "xinference",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: System :: Systems Administration",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[project.scripts]
+inferdoctor = "inferdoctor.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["inferdoctor*"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
