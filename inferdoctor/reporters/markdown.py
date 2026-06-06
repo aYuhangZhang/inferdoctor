@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 from typing import Iterable, List
 
 from inferdoctor.core.models import CheckResult
 from inferdoctor.reporters.common import report_document
 
 
-def render_markdown(results: Iterable[CheckResult]) -> str:
+def render_markdown(
+    results: Iterable[CheckResult], verbose: bool = False
+) -> str:
     result_list = list(results)
     document = report_document(result_list)
     lines: List[str] = [
@@ -33,5 +36,16 @@ def render_markdown(results: Iterable[CheckResult]) -> str:
         if result.suggestions:
             lines.extend(["", "**Suggestions**", ""])
             lines.extend("- {0}".format(item) for item in result.suggestions)
+        if verbose:
+            lines.extend(
+                [
+                    "",
+                    "**Raw data**",
+                    "",
+                    "```json",
+                    json.dumps(result.raw_data, indent=2, sort_keys=True),
+                    "```",
+                ]
+            )
     lines.append("")
     return "\n".join(lines)

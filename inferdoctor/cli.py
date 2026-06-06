@@ -13,6 +13,30 @@ from inferdoctor.core.runner import run_checks
 from inferdoctor.reporters import render_console, render_json, render_markdown
 
 
+def _positive_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--config", help="Path to a JSON or simple YAML config")
+    parser.add_argument(
+        "--timeout",
+        type=_positive_float,
+        help="HTTP timeout in seconds; overrides the config value",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Include raw diagnostic data in console or Markdown output",
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="inferdoctor",
@@ -28,7 +52,7 @@ def _parser() -> argparse.ArgumentParser:
         choices=default_registry().names(),
         help="Run one checker; omit to run all checks",
     )
-    check.add_argument("--config", help="Path to a JSON or simple YAML config")
+    _add_runtime_options(check)
 
     report = subparsers.add_parser("report", help="Generate a diagnostic report")
     report.add_argument(
@@ -38,7 +62,7 @@ def _parser() -> argparse.ArgumentParser:
         help="Report output format",
     )
     report.add_argument("--output", help="Write the report to this file")
-    report.add_argument("--config", help="Path to a JSON or simple YAML config")
+    _add_runtime_options(report)
     return parser
 
 
@@ -46,13 +70,23 @@ def _load(path: Optional[str]):
     try:
         return load_config(path)
     except ConfigError as exc:
-        raise SystemExit("inferdoctor: configuration error: {0}".format(exc))
+        raise SystemExit(
+            "inferdoctor: configuration error: {0}. "
+            "Check the path and the documented endpoints/timeout format.".format(exc)
+        )
 
 
-def _results_for_target(target: Optional[str], config_path: Optional[str]):
+def _results_for_target(
+    target: Optional[str],
+    config_path: Optional[str],
+    timeout: Optional[float] = None,
+):
     registry = default_registry()
     checkers = [registry.get(target)] if target else registry.all()
-    return run_checks(checkers, _load(config_path))
+    config = _load(config_path)
+    if timeout is not None:
+        config.timeout = timeout
+    return run_checks(checkers, config)
 
 
 def _exit_code(results: List[CheckResult]) -> int:
@@ -68,22 +102,30 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     results = _results_for_target(
-        getattr(args, "target", None), getattr(args, "config", None)
+        getattr(args, "target", None),
+        getattr(args, "config", None),
+        getattr(args, "timeout", None),
     )
     if args.command == "check":
-        print(render_console(results))
+        print(render_console(results, verbose=args.verbose))
         return _exit_code(results)
 
     rendered = (
         render_json(results)
         if args.format == "json"
-        else render_markdown(results)
+        else render_markdown(results, verbose=args.verbose)
     )
     if args.output:
         try:
             Path(args.output).write_text(rendered + "\n", encoding="utf-8")
         except OSError as exc:
-            print("inferdoctor: could not write report: {0}".format(exc), file=sys.stderr)
+            print(
+                "inferdoctor: could not write report to '{0}': {1}. "
+                "Check that the parent directory exists and is writable.".format(
+                    args.output, exc
+                ),
+                file=sys.stderr,
+            )
             return 2
     else:
         print(rendered)

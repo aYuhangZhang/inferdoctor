@@ -1,0 +1,125 @@
+{
+  "generated_at": "2026-06-06T00:00:00+00:00",
+  "results": [
+    {
+      "details": [
+        "OS: Linux-6.8.0-x86_64-with-glibc2.39",
+        "Python: 3.12.3",
+        "Architecture: x86_64",
+        "Available memory: 7.8 GiB"
+      ],
+      "name": "system",
+      "raw_data": {
+        "architecture": "x86_64",
+        "available_memory_bytes": 8375186227,
+        "os": "Linux-6.8.0-x86_64-with-glibc2.39",
+        "python_version": "3.12.3"
+      },
+      "status": "pass",
+      "suggestions": [],
+      "summary": "System information collected"
+    },
+    {
+      "details": [
+        "No NVIDIA management CLI is available on PATH."
+      ],
+      "name": "nvidia",
+      "raw_data": {
+        "nvidia_smi_path": null
+      },
+      "status": "skip",
+      "suggestions": [
+        "If this machine has an NVIDIA GPU, install or repair its driver.",
+        "Skip this check on CPU-only or non-NVIDIA systems."
+      ],
+      "summary": "nvidia-smi was not found"
+    },
+    {
+      "details": [
+        "nvcc is not available on PATH."
+      ],
+      "name": "cuda",
+      "raw_data": {
+        "environment": {
+          "CUDA_HOME": null,
+          "CUDA_PATH": null,
+          "LD_LIBRARY_PATH": null
+        },
+        "nvcc_path": null
+      },
+      "status": "skip",
+      "suggestions": [
+        "No action is needed for CPU-only inference.",
+        "For CUDA workloads, install the matching CUDA toolkit or add nvcc to PATH."
+      ],
+      "summary": "CUDA compiler was not found"
+    },
+    {
+      "details": [
+        "http://127.0.0.1:11434/api/tags: Connection refused. The service may not be running or listening at this address."
+      ],
+      "name": "ollama",
+      "raw_data": {
+        "ollama_path": null,
+        "reachable": false,
+        "url": "http://127.0.0.1:11434/api/tags"
+      },
+      "status": "skip",
+      "suggestions": [
+        "Start Ollama or update endpoints.ollama.",
+        "No action is needed if Ollama is not used on this machine."
+      ],
+      "summary": "Ollama was not found and its API is not reachable"
+    },
+    {
+      "details": [
+        "http://127.0.0.1:8000/v1/models: Connection refused. The service may not be running or listening at this address."
+      ],
+      "name": "vllm",
+      "raw_data": {
+        "reachable": false,
+        "url": "http://127.0.0.1:8000/v1/models"
+      },
+      "status": "skip",
+      "suggestions": [
+        "Start the vLLM OpenAI-compatible server or update endpoints.vllm.",
+        "No action is needed if vLLM is not used on this machine."
+      ],
+      "summary": "vLLM-compatible endpoint is not reachable"
+    },
+    {
+      "details": [
+        "http://127.0.0.1:5001/: Connection refused. The service may not be running or listening at this address."
+      ],
+      "name": "dify",
+      "raw_data": {
+        "reachable": false,
+        "url": "http://127.0.0.1:5001/"
+      },
+      "status": "skip",
+      "suggestions": [
+        "Start Dify or update endpoints.dify to its API or web base URL.",
+        "Check container port mappings if Dify is running in Docker."
+      ],
+      "summary": "Dify endpoint is not reachable"
+    },
+    {
+      "details": [
+        "http://127.0.0.1:9997/v1/models: Connection refused. The service may not be running or listening at this address."
+      ],
+      "name": "xinference",
+      "raw_data": {
+        "reachable": false,
+        "url": "http://127.0.0.1:9997/v1/models"
+      },
+      "status": "skip",
+      "suggestions": [
+        "Start Xinference or update endpoints.xinference.",
+        "No Xinference SDK is required for this check."
+      ],
+      "summary": "Xinference endpoint is not reachable"
+    }
+  ],
+  "tool": "InferDoctor",
+  "version": "0.1.0"
+}

@@ -60,5 +60,27 @@ def response_raw_data(response: HTTPResponse) -> Dict[str, Any]:
     return raw
 
 
+def describe_http_error(error: HTTPCheckError) -> str:
+    message = str(error)
+    lowered = message.lower()
+    if "connection refused" in lowered:
+        return (
+            "Connection refused. The service may not be running or listening "
+            "at this address."
+        )
+    if "timed out" in lowered or "timeout" in lowered:
+        return (
+            "The request timed out. Increase --timeout or check whether the "
+            "service is responsive."
+        )
+    if (
+        "name or service not known" in lowered
+        or "temporary failure in name resolution" in lowered
+        or "nodename nor servname" in lowered
+    ):
+        return "The endpoint hostname could not be resolved."
+    return message
+
+
 def join_url(base_url: str, path: str) -> str:
     return "{0}/{1}".format(base_url.rstrip("/"), path.lstrip("/"))

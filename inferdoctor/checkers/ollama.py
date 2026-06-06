@@ -6,6 +6,7 @@ from inferdoctor.core.checker import Checker
 from inferdoctor.core.config import Config
 from inferdoctor.core.http import (
     HTTPCheckError,
+    describe_http_error,
     get_url,
     join_url,
     response_raw_data,
@@ -37,7 +38,7 @@ class OllamaChecker(Checker):
                 name=self.name,
                 status=status,
                 summary=summary,
-                details=["{0}: {1}".format(url, exc)],
+                details=["{0}: {1}".format(url, describe_http_error(exc))],
                 suggestions=suggestions,
                 raw_data={
                     "ollama_path": executable,

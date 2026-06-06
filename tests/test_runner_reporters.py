@@ -39,3 +39,15 @@ def test_reporters_render_structured_result():
     assert "[WARN] sample" in console
     assert json_document["results"][0]["raw_data"] == {"value": 1}
     assert "| sample | **WARN** | Needs attention |" in markdown
+
+
+def test_verbose_reporters_include_raw_data():
+    result = CheckResult(
+        name="sample",
+        status=Status.PASS,
+        summary="Ready",
+        raw_data={"timeout": 2.0},
+    )
+
+    assert '"timeout": 2.0' in render_console([result], verbose=True)
+    assert "**Raw data**" in render_markdown([result], verbose=True)

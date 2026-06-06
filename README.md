@@ -1,5 +1,7 @@
 # InferDoctor
 
+[![Tests](https://github.com/anguoyang/inferdoctor/actions/workflows/tests.yml/badge.svg)](https://github.com/anguoyang/inferdoctor/actions/workflows/tests.yml)
+
 **Diagnose your local AI inference stack in one command.**
 
 InferDoctor is an open-source diagnostic tool for local AI inference stacks. It
@@ -9,6 +11,33 @@ and edge AI runtimes do not work as expected.
 InferDoctor is deliberately lightweight, read-only by default, and safe to run
 on machines without a GPU. It diagnoses existing environments without
 installing or importing AI runtimes.
+
+## What Problems Does InferDoctor Solve?
+
+Local inference failures often cross several layers: the operating system, GPU
+driver, CUDA toolkit, runtime process, HTTP endpoint, and application
+configuration. InferDoctor provides one consistent diagnostic view across those
+layers.
+
+It helps answer questions such as:
+
+- Is this machine CPU-only, or is an NVIDIA GPU visible to the driver?
+- Does `nvidia-smi` work, and what driver and VRAM does it report?
+- Is `nvcc` installed, and which CUDA toolkit version is active?
+- Is Ollama installed but not running?
+- Is an OpenAI-compatible vLLM endpoint reachable?
+- Are Xinference or Dify listening at the configured URL?
+- Can the results be shared as structured JSON or readable Markdown?
+
+Missing optional runtimes do not crash the tool. They produce a diagnostic
+status with a practical next step.
+
+## What InferDoctor Does Not Do
+
+- It does not install AI runtimes, drivers, CUDA packages, or models.
+- It does not run inference or load model weights.
+- It does not modify system settings, services, environment variables, or files.
+- It is read-only by default and uses short subprocess and HTTP probes.
 
 ## Installation
 
@@ -46,6 +75,19 @@ inferdoctor check dify
 inferdoctor check xinference
 ```
 
+Show the structured raw data collected by each check:
+
+```bash
+inferdoctor check --verbose
+```
+
+Override the HTTP timeout for slow or remote services:
+
+```bash
+inferdoctor check --timeout 5
+inferdoctor report --format markdown --timeout 5
+```
+
 Generate machine-readable or shareable reports:
 
 ```bash
@@ -54,7 +96,7 @@ inferdoctor report --format json --output report.json
 inferdoctor report --format markdown --output report.md
 ```
 
-## Example Output
+## Example Console Output
 
 ```text
 [PASS] system     System information collected
@@ -67,10 +109,50 @@ inferdoctor report --format markdown --output report.md
        suggestion: Start Ollama or update endpoints.ollama.
 ```
 
-`skip` is expected when an optional runtime or GPU tool is not present.
-`warn` identifies a reachable but incomplete setup or an installed service that
-is not running. `fail` is reserved for broken diagnostics or commands that are
-present but report an error.
+Complete sanitized CPU-only examples are available in
+[`examples/report_cpu_only.json`](examples/report_cpu_only.json) and
+[`examples/report_cpu_only.md`](examples/report_cpu_only.md).
+
+## JSON Report Example
+
+```json
+{
+  "tool": "InferDoctor",
+  "version": "0.1.0",
+  "results": [
+    {
+      "name": "nvidia",
+      "status": "skip",
+      "summary": "nvidia-smi was not found",
+      "details": ["No NVIDIA management CLI is available on PATH."],
+      "suggestions": ["Skip this check on CPU-only or non-NVIDIA systems."],
+      "raw_data": {"nvidia_smi_path": null}
+    }
+  ]
+}
+```
+
+## Markdown Report Example
+
+```markdown
+| Check | Status | Summary |
+| --- | --- | --- |
+| system | **PASS** | System information collected |
+| nvidia | **SKIP** | nvidia-smi was not found |
+| ollama | **SKIP** | Ollama was not found and its API is not reachable |
+```
+
+## Why `skip`, `warn`, or `fail`?
+
+- `skip`: an optional tool or service is absent. This is normal on CPU-only
+  machines or when that runtime is not part of the local stack.
+- `warn`: something is partially available or needs attention, such as an
+  installed CLI whose service is offline or an endpoint requiring credentials.
+- `fail`: a discovered component reports an error, or a checker itself cannot
+  complete reliably. `fail` makes the command exit non-zero.
+
+`pass` means the requested diagnostic completed and found the expected
+component or response.
 
 ## Configuration
 
@@ -93,7 +175,8 @@ timeout: 2
 ```
 
 The built-in YAML reader intentionally supports this small mapping format. This
-keeps the runtime dependency-free.
+keeps the runtime dependency-free. A CLI `--timeout` value takes precedence
+over the configuration file.
 
 ## Supported Checks
 
@@ -137,7 +220,7 @@ pytest
 
 Tests do not require a GPU, CUDA, local inference services, or internet access.
 GitHub Actions runs them on supported Python versions for pushes and pull
-requests.
+requests. See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
 
 ## Roadmap
 
@@ -148,6 +231,12 @@ requests.
 - Edge AI runtime checks for RKNN and other accelerators
 - Optional discovery of common container and service configurations
 - A stable third-party checker entry-point API
+
+## Security
+
+Please follow [SECURITY.md](SECURITY.md) when reporting a vulnerability. Do not
+put secrets, access tokens, private endpoints, or sensitive diagnostic output in
+a public issue.
 
 ## License
 

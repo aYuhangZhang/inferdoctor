@@ -6,6 +6,7 @@ from inferdoctor.core.checker import Checker
 from inferdoctor.core.config import Config
 from inferdoctor.core.http import (
     HTTPCheckError,
+    describe_http_error,
     get_url,
     join_url,
     response_raw_data,
@@ -29,7 +30,7 @@ class EndpointChecker(Checker):
                 name=self.name,
                 status=Status.SKIP,
                 summary="{0} endpoint is not reachable".format(self.service_label),
-                details=["{0}: {1}".format(url, exc)],
+                details=["{0}: {1}".format(url, describe_http_error(exc))],
                 suggestions=self.offline_suggestions,
                 raw_data={"url": url, "reachable": False},
             )
