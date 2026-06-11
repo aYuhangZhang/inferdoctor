@@ -8,5 +8,6 @@ class XinferenceChecker(EndpointChecker):
     service_label = "Xinference"
     offline_suggestions = [
         "Start Xinference or update endpoints.xinference.",
+        "Confirm the supervisor is listening on the configured host and port.",
         "No Xinference SDK is required for this check.",
     ]

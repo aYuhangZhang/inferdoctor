@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-06-06T00:00:00+00:00",
+  "generated_at": "2026-06-10T00:00:00+00:00",
   "results": [
     {
       "details": [
@@ -77,15 +77,50 @@
       ],
       "name": "vllm",
       "raw_data": {
-        "reachable": false,
-        "url": "http://127.0.0.1:8000/v1/models"
+        "base_url": "http://127.0.0.1:8000/v1",
+        "models_url": "http://127.0.0.1:8000/v1/models",
+        "reachable": false
       },
       "status": "skip",
       "suggestions": [
-        "Start the vLLM OpenAI-compatible server or update endpoints.vllm.",
-        "No action is needed if vLLM is not used on this machine."
+        "Start vLLM or verify endpoints.vllm.",
+        "Retry with: inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1"
       ],
-      "summary": "vLLM-compatible endpoint is not reachable"
+      "summary": "vLLM endpoint is not reachable"
+    },
+    {
+      "details": [
+        "http://127.0.0.1:30000/v1/models: Connection refused. The service may not be running or listening at this address."
+      ],
+      "name": "sglang",
+      "raw_data": {
+        "base_url": "http://127.0.0.1:30000/v1",
+        "models_url": "http://127.0.0.1:30000/v1/models",
+        "reachable": false
+      },
+      "status": "skip",
+      "suggestions": [
+        "Start SGLang or verify endpoints.sglang.",
+        "Retry with: inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1"
+      ],
+      "summary": "SGLang endpoint is not reachable"
+    },
+    {
+      "details": [
+        "http://127.0.0.1:9997/v1/models: Connection refused. The service may not be running or listening at this address."
+      ],
+      "name": "xinference",
+      "raw_data": {
+        "reachable": false,
+        "url": "http://127.0.0.1:9997/v1/models"
+      },
+      "status": "skip",
+      "suggestions": [
+        "Start Xinference or update endpoints.xinference.",
+        "Confirm the supervisor is listening on the configured host and port.",
+        "No Xinference SDK is required for this check."
+      ],
+      "summary": "Xinference endpoint is not reachable"
     },
     {
       "details": [
@@ -102,24 +137,8 @@
         "Check container port mappings if Dify is running in Docker."
       ],
       "summary": "Dify endpoint is not reachable"
-    },
-    {
-      "details": [
-        "http://127.0.0.1:9997/v1/models: Connection refused. The service may not be running or listening at this address."
-      ],
-      "name": "xinference",
-      "raw_data": {
-        "reachable": false,
-        "url": "http://127.0.0.1:9997/v1/models"
-      },
-      "status": "skip",
-      "suggestions": [
-        "Start Xinference or update endpoints.xinference.",
-        "No Xinference SDK is required for this check."
-      ],
-      "summary": "Xinference endpoint is not reachable"
     }
   ],
   "tool": "InferDoctor",
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

@@ -1,45 +1,118 @@
 # InferDoctor
 
 [![Tests](https://github.com/anguoyang/inferdoctor/actions/workflows/tests.yml/badge.svg)](https://github.com/anguoyang/inferdoctor/actions/workflows/tests.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](pyproject.toml)
 
-**Diagnose your local AI inference stack in one command.**
+**The doctor for your local AI inference stack.**
 
-InferDoctor is an open-source diagnostic tool for local AI inference stacks. It
-helps developers find why Ollama, vLLM, Xinference, Dify, CUDA, NVIDIA drivers,
-and edge AI runtimes do not work as expected.
+Model recommendation tools help you choose a model. InferDoctor helps you
+understand why your local AI stack is broken.
 
-InferDoctor is deliberately lightweight, read-only by default, and safe to run
-on machines without a GPU. It diagnoses existing environments without
-installing or importing AI runtimes.
+```bash
+inferdoctor
+```
 
-## What Problems Does InferDoctor Solve?
+One command gives you a health score, a component-by-component status table,
+and the three most useful next actions. InferDoctor is lightweight, read-only
+by default, and safe on machines without a GPU.
 
-Local inference failures often cross several layers: the operating system, GPU
-driver, CUDA toolkit, runtime process, HTTP endpoint, and application
-configuration. InferDoctor provides one consistent diagnostic view across those
-layers.
+## Example Output
 
-It helps answer questions such as:
+```text
+InferDoctor - Local AI Stack Health Check
+=========================================================
+Overall Health: 91 / 100  (Healthy)
+PASS 100 | WARN 60 | FAIL 0 | SKIP 85  (heuristic)
 
-- Is this machine CPU-only, or is an NVIDIA GPU visible to the driver?
-- Does `nvidia-smi` work, and what driver and VRAM does it report?
-- Is `nvcc` installed, and which CUDA toolkit version is active?
-- Is Ollama installed but not running?
-- Is an OpenAI-compatible vLLM endpoint reachable?
-- Are Xinference or Dify listening at the configured URL?
-- Can the results be shared as structured JSON or readable Markdown?
+Component   Status   Summary
+----------- -------- --------------------------------------------------
+System      PASS     System information collected
+NVIDIA      PASS     1 NVIDIA GPU(s) detected
+CUDA        PASS     CUDA toolkit 12.4 detected
+Ollama      SKIP     Ollama was not found and its API is not reachable
+vLLM        SKIP     vLLM endpoint is not reachable
+SGLang      SKIP     SGLang endpoint is not reachable
+Xinference  SKIP     Xinference endpoint is not reachable
+Dify        SKIP     Dify endpoint is not reachable
 
-Missing optional runtimes do not crash the tool. They produce a diagnostic
-status with a practical next step.
+Top recommended fixes:
+1. vLLM: vLLM endpoint is not reachable
+   Likely cause: The service is stopped, listening elsewhere, or the URL is incorrect.
+   Try: inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
+   Config: endpoints.vllm: http://127.0.0.1:8000/v1
+```
 
-## What InferDoctor Does Not Do
+More screenshot-friendly samples:
 
-- It does not install AI runtimes, drivers, CUDA packages, or models.
-- It does not run inference or load model weights.
-- It does not modify system settings, services, environment variables, or files.
-- It is read-only by default and uses short subprocess and HTTP probes.
+- [`examples/console_cpu_only.txt`](examples/console_cpu_only.txt)
+- [`examples/console_with_ollama.txt`](examples/console_with_ollama.txt)
+- [`examples/console_with_gpu.txt`](examples/console_with_gpu.txt)
 
-## Installation
+## Why InferDoctor?
+
+A local AI request can fail because of the operating system, driver, CUDA
+toolkit, runtime process, endpoint URL, authentication, reverse proxy, or API
+response format. These failures often look identical from the application.
+
+InferDoctor checks each layer separately and turns low-level symptoms into
+short, practical next steps.
+
+## One Command, One Answer
+
+Running `inferdoctor` is the same as running `inferdoctor check`:
+
+```bash
+inferdoctor
+```
+
+The dashboard immediately shows:
+
+- an overall health score;
+- which components pass, warn, fail, or are optional and skipped;
+- a short explanation for every component;
+- the top three recommended fixes;
+- exact commands and configuration hints to try next.
+
+The score is a transparent heuristic, not a benchmark. `PASS` contributes 100,
+`WARN` 60, `FAIL` 0, and optional `SKIP` results contribute 85 so an unused
+runtime does not heavily penalize an otherwise healthy machine.
+
+## What Problems Does InferDoctor Diagnose?
+
+| Component | What InferDoctor checks |
+| --- | --- |
+| System | OS, Python version, CPU architecture, available memory |
+| NVIDIA | `nvidia-smi`, driver version, GPU name, total VRAM |
+| CUDA | `nvcc`, toolkit version, CUDA environment variables |
+| Ollama | CLI discovery and `/api/tags` connectivity |
+| vLLM | OpenAI-compatible `/v1/models` connectivity and response shape |
+| SGLang | OpenAI-compatible `/v1/models` connectivity and response shape |
+| Xinference | Supervisor endpoint connectivity without the SDK |
+| Dify | Configurable Dify endpoint connectivity without the SDK |
+
+OpenAI-compatible checks distinguish connection refusal, timeout, unauthorized
+responses, wrong base URLs, invalid JSON, and non-compatible response shapes.
+
+## Top Fixes
+
+For the highest-priority problems, InferDoctor shows:
+
+- the observed issue;
+- the likely cause;
+- the next command to run;
+- the relevant `inferdoctor.yaml` setting.
+
+Example:
+
+```text
+1. SGLang: SGLang models route returned HTTP 404
+   Likely cause: The service responded, but its route, authentication, or response format needs attention.
+   Try: inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
+   Config: endpoints.sglang: http://127.0.0.1:30000/v1
+```
+
+## Quick Start
 
 InferDoctor requires Python 3.9 or newer.
 
@@ -47,169 +120,90 @@ InferDoctor requires Python 3.9 or newer.
 git clone https://github.com/anguoyang/inferdoctor.git
 cd inferdoctor
 python -m pip install -e .
+inferdoctor
 ```
 
-For development:
+Check one component or override its endpoint:
 
 ```bash
-python -m pip install -e ".[dev]"
-```
-
-## Quick Start
-
-Run every built-in check:
-
-```bash
-inferdoctor check
-```
-
-Run one check:
-
-```bash
-inferdoctor check system
 inferdoctor check nvidia
-inferdoctor check cuda
 inferdoctor check ollama
-inferdoctor check vllm
-inferdoctor check dify
+inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
+inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
 inferdoctor check xinference
+inferdoctor check dify
 ```
 
-Show the structured raw data collected by each check:
+Show detailed raw diagnostic data or allow more time for remote endpoints:
 
 ```bash
 inferdoctor check --verbose
+inferdoctor check vllm --timeout 5
 ```
-
-Override the HTTP timeout for slow or remote services:
-
-```bash
-inferdoctor check --timeout 5
-inferdoctor report --format markdown --timeout 5
-```
-
-Generate machine-readable or shareable reports:
-
-```bash
-inferdoctor report --format json
-inferdoctor report --format json --output report.json
-inferdoctor report --format markdown --output report.md
-```
-
-## Example Console Output
-
-```text
-[PASS] system     System information collected
-       - OS: Linux-6.8.0-x86_64-with-glibc2.39
-       - Python: 3.12.3
-       - Architecture: x86_64
-[SKIP] nvidia     nvidia-smi was not found
-       suggestion: Skip this check on CPU-only or non-NVIDIA systems.
-[WARN] ollama     Ollama is installed but its API is not reachable
-       suggestion: Start Ollama or update endpoints.ollama.
-```
-
-Complete sanitized CPU-only examples are available in
-[`examples/report_cpu_only.json`](examples/report_cpu_only.json) and
-[`examples/report_cpu_only.md`](examples/report_cpu_only.md).
-
-## JSON Report Example
-
-```json
-{
-  "tool": "InferDoctor",
-  "version": "0.1.0",
-  "results": [
-    {
-      "name": "nvidia",
-      "status": "skip",
-      "summary": "nvidia-smi was not found",
-      "details": ["No NVIDIA management CLI is available on PATH."],
-      "suggestions": ["Skip this check on CPU-only or non-NVIDIA systems."],
-      "raw_data": {"nvidia_smi_path": null}
-    }
-  ]
-}
-```
-
-## Markdown Report Example
-
-```markdown
-| Check | Status | Summary |
-| --- | --- | --- |
-| system | **PASS** | System information collected |
-| nvidia | **SKIP** | nvidia-smi was not found |
-| ollama | **SKIP** | Ollama was not found and its API is not reachable |
-```
-
-## Why `skip`, `warn`, or `fail`?
-
-- `skip`: an optional tool or service is absent. This is normal on CPU-only
-  machines or when that runtime is not part of the local stack.
-- `warn`: something is partially available or needs attention, such as an
-  installed CLI whose service is offline or an endpoint requiring credentials.
-- `fail`: a discovered component reports an error, or a checker itself cannot
-  complete reliably. `fail` makes the command exit non-zero.
-
-`pass` means the requested diagnostic completed and found the expected
-component or response.
 
 ## Configuration
-
-Pass a JSON file or a simple YAML file with endpoint overrides:
-
-```bash
-inferdoctor check --config inferdoctor.yaml
-inferdoctor report --format markdown --config inferdoctor.yaml
-```
-
-Example `inferdoctor.yaml`:
 
 ```yaml
 endpoints:
   ollama: http://127.0.0.1:11434
-  xinference: http://127.0.0.1:9997
   vllm: http://127.0.0.1:8000/v1
+  sglang: http://127.0.0.1:30000/v1
+  xinference: http://127.0.0.1:9997
   dify: http://127.0.0.1:5001
 timeout: 2
 ```
 
-The built-in YAML reader intentionally supports this small mapping format. This
-keeps the runtime dependency-free. A CLI `--timeout` value takes precedence
-over the configuration file.
-
-## Supported Checks
-
-| Check | Diagnostics |
-| --- | --- |
-| `system` | OS, Python version, CPU architecture, available memory |
-| `nvidia` | `nvidia-smi`, driver version, GPU name, total VRAM |
-| `cuda` | `nvcc`, CUDA toolkit version, CUDA environment variables |
-| `ollama` | CLI discovery and `/api/tags` endpoint |
-| `vllm` | OpenAI-compatible `/v1/models` endpoint |
-| `xinference` | HTTP `/v1/models` endpoint without the SDK |
-| `dify` | Configurable Dify base endpoint without the SDK |
-
-The checker registry is plugin-style: each checker implements one small
-read-only interface and returns the same structured result:
-
-```yaml
-name: ollama
-status: pass
-summary: Ollama CLI and API are available
-details: []
-suggestions: []
-raw_data: {}
+```bash
+inferdoctor check --config inferdoctor.yaml
 ```
 
-## Design Principles
+The built-in YAML reader intentionally supports this small mapping format so
+the runtime remains dependency-free. `--timeout` and `--endpoint` provide safe,
+temporary overrides without editing configuration.
 
-- Lightweight: no GPU frameworks or inference servers are dependencies.
-- Safe: diagnostics are read-only and use short subprocess and HTTP timeouts.
-- Portable: all checks degrade cleanly on CPU-only machines.
-- Structured: console, JSON, and Markdown use the same result model.
-- Extensible: new runtimes can be added as independent checker plugins.
-- Testable: command and network behavior is covered with mocks.
+## Reports
+
+```bash
+inferdoctor report --format json
+inferdoctor report --format markdown
+inferdoctor report --format json --output report.json
+inferdoctor report --format markdown --output report.md
+```
+
+See the sanitized samples in
+[`examples/report_cpu_only.json`](examples/report_cpu_only.json) and
+[`examples/report_cpu_only.md`](examples/report_cpu_only.md).
+
+## InferDoctor vs Model Recommendation Tools
+
+| Question | Model recommendation tools | InferDoctor |
+| --- | --- | --- |
+| Which model should I use? | Yes | No |
+| Why is my local endpoint failing? | Usually no | Yes |
+| Is my NVIDIA driver visible? | Sometimes | Yes |
+| Is `/v1/models` valid and compatible? | Usually no | Yes |
+| Does it download or run models? | Sometimes | Never |
+
+InferDoctor is not a model recommender. It does not choose, download, or run
+models for you. It diagnoses the stack you already operate.
+
+## What InferDoctor Does Not Do
+
+- It does not install AI runtimes, drivers, CUDA packages, or models.
+- It does not run inference or load model weights.
+- It does not modify system settings or services.
+- It does not require a GPU.
+- It is read-only by default.
+
+## Status Meaning
+
+- `PASS`: the component responded as expected.
+- `WARN`: the component is reachable or present, but needs attention.
+- `FAIL`: a discovered component is broken or a diagnostic cannot complete.
+- `SKIP`: an optional component is absent or offline; this is not automatically
+  a system failure.
+
+Only `FAIL` causes a non-zero diagnostic exit code.
 
 ## Development
 
@@ -218,25 +212,20 @@ python -m pip install -e ".[dev]"
 pytest
 ```
 
-Tests do not require a GPU, CUDA, local inference services, or internet access.
-GitHub Actions runs them on supported Python versions for pushes and pull
-requests. See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
+Tests use subprocess and HTTP mocks. They require no GPU, CUDA installation,
+local inference runtime, or internet access.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
 - llama.cpp server and build diagnostics
 - ONNX Runtime provider diagnostics
 - TensorRT library and version diagnostics
-- SGLang OpenAI-compatible endpoint checks
-- Edge AI runtime checks for RKNN and other accelerators
-- Optional discovery of common container and service configurations
-- A stable third-party checker entry-point API
-
-## Security
-
-Please follow [SECURITY.md](SECURITY.md) when reporting a vulnerability. Do not
-put secrets, access tokens, private endpoints, or sensitive diagnostic output in
-a public issue.
+- RKNN and other edge accelerator checks
+- optional local container and service discovery
+- stable third-party checker entry points
+- richer report summaries without adding heavy runtime dependencies
 
 ## License
 

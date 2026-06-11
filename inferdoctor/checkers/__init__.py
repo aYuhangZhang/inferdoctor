@@ -4,6 +4,7 @@ from inferdoctor.checkers.cuda import CudaChecker
 from inferdoctor.checkers.dify import DifyChecker
 from inferdoctor.checkers.nvidia import NvidiaChecker
 from inferdoctor.checkers.ollama import OllamaChecker
+from inferdoctor.checkers.sglang import SGLangChecker
 from inferdoctor.checkers.system import SystemChecker
 from inferdoctor.checkers.vllm import VLLMChecker
 from inferdoctor.checkers.xinference import XinferenceChecker
@@ -18,8 +19,9 @@ def default_registry() -> CheckerRegistry:
             CudaChecker(),
             OllamaChecker(),
             VLLMChecker(),
-            DifyChecker(),
+            SGLangChecker(),
             XinferenceChecker(),
+            DifyChecker(),
         ]
     )
 

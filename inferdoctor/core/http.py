@@ -6,6 +6,8 @@ from typing import Any, Dict, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from inferdoctor import __version__
+
 
 class HTTPCheckError(ConnectionError):
     pass
@@ -24,7 +26,7 @@ def get_url(url: str, timeout: float = 2.0) -> HTTPResponse:
         url,
         headers={
             "Accept": "application/json",
-            "User-Agent": "InferDoctor/0.1",
+            "User-Agent": "InferDoctor/{0}".format(__version__),
         },
         method="GET",
     )

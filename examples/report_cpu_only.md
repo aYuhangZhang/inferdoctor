@@ -1,6 +1,6 @@
 # InferDoctor Report
 
-Generated: `2026-06-06T00:00:00+00:00`
+Generated: `2026-06-10T00:00:00+00:00`
 
 | Check | Status | Summary |
 | --- | --- | --- |
@@ -8,9 +8,10 @@ Generated: `2026-06-06T00:00:00+00:00`
 | nvidia | **SKIP** | nvidia-smi was not found |
 | cuda | **SKIP** | CUDA compiler was not found |
 | ollama | **SKIP** | Ollama was not found and its API is not reachable |
-| vllm | **SKIP** | vLLM-compatible endpoint is not reachable |
-| dify | **SKIP** | Dify endpoint is not reachable |
+| vllm | **SKIP** | vLLM endpoint is not reachable |
+| sglang | **SKIP** | SGLang endpoint is not reachable |
 | xinference | **SKIP** | Xinference endpoint is not reachable |
+| dify | **SKIP** | Dify endpoint is not reachable |
 
 ## system
 
@@ -64,7 +65,7 @@ Ollama was not found and its API is not reachable
 
 ## vllm
 
-vLLM-compatible endpoint is not reachable
+vLLM endpoint is not reachable
 
 **Details**
 
@@ -72,8 +73,35 @@ vLLM-compatible endpoint is not reachable
 
 **Suggestions**
 
-- Start the vLLM OpenAI-compatible server or update endpoints.vllm.
-- No action is needed if vLLM is not used on this machine.
+- Start vLLM or verify endpoints.vllm.
+- Retry with: inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
+
+## sglang
+
+SGLang endpoint is not reachable
+
+**Details**
+
+- http://127.0.0.1:30000/v1/models: Connection refused. The service may not be running or listening at this address.
+
+**Suggestions**
+
+- Start SGLang or verify endpoints.sglang.
+- Retry with: inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
+
+## xinference
+
+Xinference endpoint is not reachable
+
+**Details**
+
+- http://127.0.0.1:9997/v1/models: Connection refused. The service may not be running or listening at this address.
+
+**Suggestions**
+
+- Start Xinference or update endpoints.xinference.
+- Confirm the supervisor is listening on the configured host and port.
+- No Xinference SDK is required for this check.
 
 ## dify
 
@@ -87,16 +115,3 @@ Dify endpoint is not reachable
 
 - Start Dify or update endpoints.dify to its API or web base URL.
 - Check container port mappings if Dify is running in Docker.
-
-## xinference
-
-Xinference endpoint is not reachable
-
-**Details**
-
-- http://127.0.0.1:9997/v1/models: Connection refused. The service may not be running or listening at this address.
-
-**Suggestions**
-
-- Start Xinference or update endpoints.xinference.
-- No Xinference SDK is required for this check.

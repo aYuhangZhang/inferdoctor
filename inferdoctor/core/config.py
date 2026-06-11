@@ -4,18 +4,30 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Optional
+from urllib.parse import urlsplit
 
 
 DEFAULT_ENDPOINTS = {
     "ollama": "http://127.0.0.1:11434",
-    "xinference": "http://127.0.0.1:9997",
     "vllm": "http://127.0.0.1:8000/v1",
+    "sglang": "http://127.0.0.1:30000/v1",
+    "xinference": "http://127.0.0.1:9997",
     "dify": "http://127.0.0.1:5001",
 }
 
 
 class ConfigError(ValueError):
     pass
+
+
+def normalize_endpoint(name: str, url: str) -> str:
+    normalized = url.strip().rstrip("/")
+    parts = urlsplit(normalized)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        raise ConfigError(
+            "Endpoint '{0}' must be an http:// or https:// URL".format(name)
+        )
+    return normalized
 
 
 @dataclass
@@ -94,7 +106,7 @@ def _validate_config(data: Dict[str, Any]) -> Config:
             raise ConfigError("Unknown endpoint: {0}".format(name))
         if not isinstance(url, str) or not url.strip():
             raise ConfigError("Endpoint '{0}' must be a non-empty URL".format(name))
-        endpoints[name] = url.rstrip("/")
+        endpoints[name] = normalize_endpoint(name, url)
 
     try:
         timeout = float(data.get("timeout", 2.0))
