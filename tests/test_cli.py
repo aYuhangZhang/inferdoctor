@@ -87,3 +87,12 @@ def test_explain_command_does_not_run_checks(results, capsys):
     assert exit_code == 0
     assert "InferDoctor Explain:" in capsys.readouterr().out
     results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_capacity_command_does_not_run_checks(results, capsys):
+    exit_code = main(["capacity", "--vram", "24"])
+
+    assert exit_code == 0
+    assert "InferDoctor Capacity Preview" in capsys.readouterr().out
+    results.assert_not_called()

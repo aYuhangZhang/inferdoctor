@@ -7,6 +7,7 @@ from typing import List, Optional, Sequence, Tuple
 
 from inferdoctor import __version__
 from inferdoctor.checkers import default_registry
+from inferdoctor.core.capacity import render_capacity
 from inferdoctor.core.config import (
     Config,
     ConfigError,
@@ -97,6 +98,24 @@ def _parser() -> argparse.ArgumentParser:
         choices=explain_topics(),
         help="Troubleshooting topic to explain",
     )
+
+    capacity = subparsers.add_parser(
+        "capacity",
+        help="Preview local AI workload capacity",
+        description=(
+            "Estimate local AI hardware readiness with lightweight heuristics. "
+            "No models are downloaded or run."
+        ),
+    )
+    capacity.add_argument(
+        "--vram",
+        type=_positive_float,
+        help="Override detected NVIDIA VRAM in GiB",
+    )
+    capacity.add_argument(
+        "--gpu",
+        help="Optional GPU name to show with --vram",
+    )
     return parser
 
 
@@ -148,6 +167,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "explain":
         print(render_explanation(args.topic))
+        return 0
+    if args.command == "capacity":
+        print(render_capacity(vram_gib=args.vram, gpu_name=args.gpu))
         return 0
 
     results, config = _results_for_target(

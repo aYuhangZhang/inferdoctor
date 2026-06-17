@@ -141,7 +141,6 @@ inferdoctor check --verbose
 inferdoctor check vllm --timeout 5
 ```
 
-
 ## Troubleshooting Explain
 
 Use `inferdoctor explain` when you want a short, focused explanation for a
@@ -175,6 +174,18 @@ inferdoctor check --config inferdoctor.yaml
 The built-in YAML reader intentionally supports this small mapping format so
 the runtime remains dependency-free. `--timeout` and `--endpoint` provide safe,
 temporary overrides without editing configuration.
+
+## Capacity Preview
+
+Use `inferdoctor capacity` for a lightweight hardware readiness estimate:
+
+```bash
+inferdoctor capacity
+inferdoctor capacity --vram 24
+```
+
+Capacity estimates are rough heuristics, not benchmarks. InferDoctor does not
+download models, run inference, or recommend a model leaderboard.
 
 ## Reports
 
