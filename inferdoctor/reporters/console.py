@@ -21,6 +21,28 @@ DISPLAY_NAMES = {
 }
 
 
+def _status_summary(health) -> str:
+    return (
+        "Stack Summary: {pass_count} working | {warn_count} needs attention | "
+        "{skip_count} optional/offline | {fail_count} failed"
+    ).format(
+        pass_count=health.counts.get("pass", 0),
+        warn_count=health.counts.get("warn", 0),
+        skip_count=health.counts.get("skip", 0),
+        fail_count=health.counts.get("fail", 0),
+    )
+
+
+def _doctor_read(health) -> str:
+    if health.counts.get("fail", 0):
+        return "Doctor's read: At least one required check failed. Start with the first fix below."
+    if health.counts.get("warn", 0):
+        return "Doctor's read: Some components need attention. Start with the first fix below."
+    if health.counts.get("skip", 0):
+        return "Doctor's read: No hard failures detected. Skipped components are optional unless you use them."
+    return "Doctor's read: All detected checks passed. Your local AI stack looks ready."
+
+
 def render_console(
     results: Iterable[CheckResult], verbose: bool = False
 ) -> str:
@@ -53,6 +75,8 @@ def render_dashboard(
         "InferDoctor - Local AI Stack Health Check",
         "=" * 57,
         "Overall Health: {0} / 100  ({1})".format(health.score, health.label),
+        _status_summary(health),
+        _doctor_read(health),
         "PASS 100 | WARN 60 | FAIL 0 | SKIP 85  (heuristic)",
         "",
         "Component   Status   Summary",
@@ -68,7 +92,7 @@ def render_dashboard(
         )
 
     fixes = recommend_fixes(result_list, config)
-    lines.extend(["", "Top recommended fixes:"])
+    lines.extend(["", "Top recommended fixes (most useful first):"])
     if not fixes:
         lines.append("No immediate fixes recommended. Your detected stack looks healthy.")
     for index, fix in enumerate(fixes, start=1):

@@ -52,8 +52,10 @@ def test_dashboard_contains_title_table_score_and_top_fixes():
 
     assert "InferDoctor - Local AI Stack Health Check" in output
     assert "Overall Health:" in output
+    assert "Stack Summary:" in output
+    assert "Doctor's read:" in output
     assert "SGLang      SKIP" in output
-    assert "Top recommended fixes:" in output
+    assert "Top recommended fixes (most useful first):" in output
     assert "Likely cause:" in output
 
 
