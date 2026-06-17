@@ -67,13 +67,13 @@ def describe_http_error(error: HTTPCheckError) -> str:
     lowered = message.lower()
     if "connection refused" in lowered:
         return (
-            "Connection refused. The service may not be running or listening "
-            "at this address."
+            "Connection refused. The endpoint is not reachable; the service "
+            "may not be running or may be listening on another port."
         )
     if "timed out" in lowered or "timeout" in lowered:
         return (
-            "The request timed out. Increase --timeout or check whether the "
-            "service is responsive."
+            "The service did not respond in time. The runtime may be loading "
+            "a model, overloaded, or blocked by network/proxy settings. Try --timeout."
         )
     if (
         "name or service not known" in lowered

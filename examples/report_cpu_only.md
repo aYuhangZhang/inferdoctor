@@ -47,8 +47,8 @@ CUDA compiler was not found
 
 **Suggestions**
 
-- No action is needed for CPU-only inference.
-- For CUDA workloads, install the matching CUDA toolkit or add nvcc to PATH.
+- No action is needed for CPU-only inference or many prebuilt runtimes such as Ollama.
+- Install CUDA toolkit only if you need nvcc for compilation or a runtime that requires it.
 
 ## ollama
 
@@ -56,7 +56,7 @@ Ollama was not found and its API is not reachable
 
 **Details**
 
-- http://127.0.0.1:11434/api/tags: Connection refused. The service may not be running or listening at this address.
+- http://127.0.0.1:11434/api/tags: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
 
 **Suggestions**
 
@@ -69,7 +69,7 @@ vLLM endpoint is not reachable
 
 **Details**
 
-- http://127.0.0.1:8000/v1/models: Connection refused. The service may not be running or listening at this address.
+- http://127.0.0.1:8000/v1/models: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
 
 **Suggestions**
 
@@ -82,7 +82,7 @@ SGLang endpoint is not reachable
 
 **Details**
 
-- http://127.0.0.1:30000/v1/models: Connection refused. The service may not be running or listening at this address.
+- http://127.0.0.1:30000/v1/models: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
 
 **Suggestions**
 
@@ -95,7 +95,7 @@ Xinference endpoint is not reachable
 
 **Details**
 
-- http://127.0.0.1:9997/v1/models: Connection refused. The service may not be running or listening at this address.
+- http://127.0.0.1:9997/v1/models: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
 
 **Suggestions**
 
@@ -109,9 +109,9 @@ Dify endpoint is not reachable
 
 **Details**
 
-- http://127.0.0.1:5001/: Connection refused. The service may not be running or listening at this address.
+- http://127.0.0.1:5001/: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
 
 **Suggestions**
 
-- Start Dify or update endpoints.dify to its API or web base URL.
-- Check container port mappings if Dify is running in Docker.
+- Dify is optional. Add endpoints.dify to inferdoctor.yaml if you want to diagnose Dify connectivity.
+- If Dify is running, check its service status and container port mappings.

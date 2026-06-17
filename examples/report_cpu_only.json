@@ -49,14 +49,14 @@
       },
       "status": "skip",
       "suggestions": [
-        "No action is needed for CPU-only inference.",
-        "For CUDA workloads, install the matching CUDA toolkit or add nvcc to PATH."
+        "No action is needed for CPU-only inference or many prebuilt runtimes such as Ollama.",
+        "Install CUDA toolkit only if you need nvcc for compilation or a runtime that requires it."
       ],
       "summary": "CUDA compiler was not found"
     },
     {
       "details": [
-        "http://127.0.0.1:11434/api/tags: Connection refused. The service may not be running or listening at this address."
+        "http://127.0.0.1:11434/api/tags: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port."
       ],
       "name": "ollama",
       "raw_data": {
@@ -73,7 +73,7 @@
     },
     {
       "details": [
-        "http://127.0.0.1:8000/v1/models: Connection refused. The service may not be running or listening at this address."
+        "http://127.0.0.1:8000/v1/models: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port."
       ],
       "name": "vllm",
       "raw_data": {
@@ -90,7 +90,7 @@
     },
     {
       "details": [
-        "http://127.0.0.1:30000/v1/models: Connection refused. The service may not be running or listening at this address."
+        "http://127.0.0.1:30000/v1/models: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port."
       ],
       "name": "sglang",
       "raw_data": {
@@ -107,7 +107,7 @@
     },
     {
       "details": [
-        "http://127.0.0.1:9997/v1/models: Connection refused. The service may not be running or listening at this address."
+        "http://127.0.0.1:9997/v1/models: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port."
       ],
       "name": "xinference",
       "raw_data": {
@@ -124,7 +124,7 @@
     },
     {
       "details": [
-        "http://127.0.0.1:5001/: Connection refused. The service may not be running or listening at this address."
+        "http://127.0.0.1:5001/: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port."
       ],
       "name": "dify",
       "raw_data": {
@@ -133,8 +133,8 @@
       },
       "status": "skip",
       "suggestions": [
-        "Start Dify or update endpoints.dify to its API or web base URL.",
-        "Check container port mappings if Dify is running in Docker."
+        "Dify is optional. Add endpoints.dify to inferdoctor.yaml if you want to diagnose Dify connectivity.",
+        "If Dify is running, check its service status and container port mappings."
       ],
       "summary": "Dify endpoint is not reachable"
     }

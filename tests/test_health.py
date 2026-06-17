@@ -57,6 +57,7 @@ def test_dashboard_contains_title_table_score_and_top_fixes():
     assert "SGLang      SKIP" in output
     assert "Top recommended fixes (most useful first):" in output
     assert "Likely cause:" in output
+    assert "Impact:" in output
 
 
 def test_all_warn_and_fail_results_receive_actions_beyond_default_limit():
@@ -86,3 +87,28 @@ def test_404_fix_uses_checker_suggested_endpoint():
 
     assert fix.next_command.endswith("http://127.0.0.1:8000/v1")
     assert fix.config_hint.endswith("http://127.0.0.1:8000/v1")
+
+
+def test_cuda_fix_mentions_driver_available_when_nvidia_passes():
+    fixes = recommend_fixes(
+        [
+            _result("nvidia", Status.PASS, "1 NVIDIA GPU(s) detected"),
+            _result("cuda", Status.SKIP, "CUDA compiler was not found"),
+        ],
+        Config(),
+    )
+
+    assert fixes[0].component == "CUDA"
+    assert "NVIDIA driver is available" in fixes[0].likely_cause
+    assert "Optional" in fixes[0].impact
+
+
+def test_dify_fix_marks_service_optional():
+    fixes = recommend_fixes(
+        [_result("dify", Status.SKIP, "Dify endpoint is not reachable")],
+        Config(),
+    )
+
+    assert fixes[0].component == "Dify"
+    assert "Dify is optional" in fixes[0].likely_cause
+    assert "Optional unless Dify" in fixes[0].impact

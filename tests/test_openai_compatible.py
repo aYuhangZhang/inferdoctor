@@ -57,6 +57,7 @@ def test_openai_checker_explains_unauthorized(get):
 
     assert result.status == Status.WARN
     assert "requires authentication" in result.summary
+    assert "Set an API key" in result.suggestions[0]
 
 
 @patch("inferdoctor.checkers.openai_compatible.get_url")
@@ -72,7 +73,8 @@ def test_openai_checker_suggests_v1_for_404(get):
     result = VLLMChecker().run(config)
 
     assert result.status == Status.WARN
-    assert "http://127.0.0.1:8000/v1" in result.suggestions[1]
+    assert "Try adding /v1" in result.suggestions[1]
+    assert "http://127.0.0.1:8000/v1" in result.suggestions[2]
 
 
 @patch("inferdoctor.checkers.openai_compatible.get_url")

@@ -100,6 +100,7 @@ def render_dashboard(
             [
                 "{0}. {1}: {2}".format(index, fix.component, fix.issue),
                 "   Likely cause: {0}".format(fix.likely_cause),
+                "   Impact: {0}".format(fix.impact),
                 "   Try: {0}".format(fix.next_command),
             ]
         )

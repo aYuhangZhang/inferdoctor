@@ -29,6 +29,7 @@ class RecommendedFix:
     likely_cause: str
     next_command: str
     config_hint: Optional[str] = None
+    impact: Optional[str] = None
 
 
 def calculate_health(results: Iterable[CheckResult]) -> HealthSummary:
@@ -55,6 +56,14 @@ def calculate_health(results: Iterable[CheckResult]) -> HealthSummary:
     return HealthSummary(score=score, label=label, counts=counts)
 
 
+def _status_impact(status: Status, service_name: str) -> str:
+    if status == Status.FAIL:
+        return "Likely blocking for this component until fixed."
+    if status == Status.WARN:
+        return "Needs attention if your app depends on {0}.".format(service_name)
+    return "Optional unless {0} is part of your local stack.".format(service_name)
+
+
 def _endpoint_fix(result: CheckResult, config: Config) -> RecommendedFix:
     endpoint = config.endpoints[result.name]
     label = {
@@ -66,13 +75,21 @@ def _endpoint_fix(result: CheckResult, config: Config) -> RecommendedFix:
     }[result.name]
     summary = result.summary.lower()
     if "404" in summary:
-        cause = "The base URL likely has a missing or duplicated /v1 prefix."
+        cause = (
+            "The service responded, but /v1/models was not found. The base URL "
+            "may be missing or duplicating /v1."
+        )
     elif "authentication" in summary or "unauthorized" in summary:
-        cause = "The server or reverse proxy requires credentials for this route."
+        cause = "The endpoint requires authentication or the proxy blocks this route."
     elif "invalid json" in summary or "not openai-compatible" in summary:
         cause = "The URL may point to a web UI or a non-compatible API route."
+    elif result.name == "dify":
+        cause = (
+            "Dify is optional. If you run it locally, the service may be stopped "
+            "or mapped to another port."
+        )
     else:
-        cause = "The service is stopped, listening elsewhere, or the URL is incorrect."
+        cause = "The service may not be running, or it may be listening on another port."
 
     next_command = "inferdoctor check {0} --endpoint {1}".format(
         result.name, endpoint
@@ -92,10 +109,13 @@ def _endpoint_fix(result: CheckResult, config: Config) -> RecommendedFix:
         likely_cause=cause,
         next_command=next_command,
         config_hint="endpoints.{0}: {1}".format(result.name, suggested_endpoint),
+        impact=_status_impact(result.status, label),
     )
 
 
-def _fix_for(result: CheckResult, config: Config) -> RecommendedFix:
+def _fix_for(
+    result: CheckResult, config: Config, by_name: Dict[str, CheckResult]
+) -> RecommendedFix:
     if result.name in config.endpoints:
         return _endpoint_fix(result, config)
     if result.name == "nvidia":
@@ -108,26 +128,34 @@ def _fix_for(result: CheckResult, config: Config) -> RecommendedFix:
             ),
             next_command="nvidia-smi",
             config_hint="No action is needed on a CPU-only or non-NVIDIA machine.",
+            impact="Required only for NVIDIA GPU inference or CUDA-backed runtimes.",
         )
     if result.name == "cuda":
+        nvidia = by_name.get("nvidia")
+        driver_available = nvidia is not None and nvidia.status == Status.PASS
+        cause = (
+            "NVIDIA driver is available, but CUDA toolkit was not found. This "
+            "may be OK if you only use prebuilt runtimes such as Ollama."
+            if driver_available
+            else "The CUDA toolkit is absent or nvcc is not on PATH."
+        )
         return RecommendedFix(
             component="CUDA",
             issue=result.summary,
-            likely_cause=(
-                "The CUDA toolkit is absent or nvcc is not on PATH; the NVIDIA "
-                "driver may still work."
-            ),
+            likely_cause=cause,
             next_command="nvcc --version",
             config_hint=(
-                "Prebuilt runtimes may not require nvcc. Install a toolkit only "
-                "if your workflow needs it."
+                "Install CUDA toolkit only if you need to compile CUDA workloads "
+                "or use runtimes that require nvcc."
             ),
+            impact="Optional for CPU-only and many prebuilt runtimes; required for CUDA compilation.",
         )
     return RecommendedFix(
         component=result.name.title(),
         issue=result.summary,
         likely_cause="The diagnostic could not confirm this component is healthy.",
         next_command="inferdoctor check {0} --verbose".format(result.name),
+        impact="Review this component if it is part of your local AI stack.",
     )
 
 
@@ -167,5 +195,5 @@ def recommend_fixes(
     )
     effective_limit = max(limit, required)
     return [
-        _fix_for(result, config) for result in candidates[:effective_limit]
+        _fix_for(result, config, by_name) for result in candidates[:effective_limit]
     ]

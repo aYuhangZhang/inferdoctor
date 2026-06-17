@@ -74,7 +74,7 @@ class OpenAICompatibleChecker(Checker):
                 ),
                 details=["{0} returned HTTP {1}.".format(models_url, response.status)],
                 suggestions=[
-                    "The endpoint is alive; configure credentials in the client using it.",
+                    "The endpoint requires authentication. Set an API key or check the service configuration.",
                     "Verify that /v1/models is allowed by the server or reverse proxy.",
                 ],
                 raw_data=raw_data,
@@ -90,7 +90,8 @@ class OpenAICompatibleChecker(Checker):
                 ),
                 details=["Probe URL: {0}".format(models_url)],
                 suggestions=[
-                    "The configured URL may be missing or duplicating the /v1 prefix.",
+                    "The service responded, but /v1/models was not found.",
+                    "Your base URL may be wrong. Try adding /v1 to the endpoint URL.",
                     "Try: inferdoctor check {0} --endpoint {1}".format(
                         self.name, suggested_base
                     ),
