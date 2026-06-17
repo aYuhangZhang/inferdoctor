@@ -1,0 +1,34 @@
+InferDoctor - Local AI Stack Health Check
+=========================================================
+Overall Health: 89 / 100  (Mostly healthy)
+Stack Summary: 2 working | 0 needs attention | 6 optional/offline | 0 failed
+Doctor's read: No hard failures detected. Skipped components are optional unless you use them.
+PASS 100 | WARN 60 | FAIL 0 | SKIP 85  (heuristic)
+
+Component   Status   Summary
+----------- -------- --------------------------------------------------
+System      PASS     System information collected
+NVIDIA      SKIP     nvidia-smi was not found
+CUDA        SKIP     CUDA compiler was not found
+Ollama      PASS     Ollama CLI and API are available
+vLLM        SKIP     vLLM endpoint is not reachable
+SGLang      SKIP     SGLang endpoint is not reachable
+Xinference  SKIP     Xinference endpoint is not reachable
+Dify        SKIP     Dify endpoint is not reachable
+
+Top recommended fixes (most useful first):
+1. vLLM: vLLM endpoint is not reachable
+   Likely cause: The service is stopped, listening elsewhere, or the URL is incorrect.
+   Impact: Optional unless vLLM is part of your local stack.
+   Try: inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
+   Config: endpoints.vllm: http://127.0.0.1:8000/v1
+2. SGLang: SGLang endpoint is not reachable
+   Likely cause: The service is stopped, listening elsewhere, or the URL is incorrect.
+   Impact: Optional unless SGLang is part of your local stack.
+   Try: inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
+   Config: endpoints.sglang: http://127.0.0.1:30000/v1
+3. Dify: Dify endpoint is not reachable
+   Likely cause: The service is stopped, listening elsewhere, or the URL is incorrect.
+   Impact: Optional unless Dify is part of your local stack.
+   Try: inferdoctor check dify --endpoint http://127.0.0.1:5001
+   Config: endpoints.dify: http://127.0.0.1:5001

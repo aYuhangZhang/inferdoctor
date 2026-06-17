@@ -1,37 +1,44 @@
-# v0.1.0 Release Checklist
+# v0.2.0 Release Checklist
 
-## Code and Compatibility
+## Product Experience
 
-- [ ] Version is `0.1.0` in package metadata and `inferdoctor.__version__`.
-- [ ] Runtime dependencies remain empty or lightweight and justified.
-- [ ] All checks run safely on a CPU-only machine.
-- [ ] Missing GPU tools and inference services do not crash the CLI.
-- [ ] `inferdoctor check --help` documents supported options.
-- [ ] JSON and Markdown report formats are valid and contain no secrets.
+- [x] `inferdoctor` shows the health dashboard without a subcommand.
+- [x] The dashboard includes all eight supported components.
+- [x] The heuristic score, stack summary, and status weights are visible and documented.
+- [x] Top fixes include likely cause, impact, next command, and config hint.
+- [x] Screenshot examples contain no private data.
+- [x] README first screen explains the value and one-command quick start.
+
+## Diagnostics
+
+- [x] vLLM uses the reusable OpenAI-compatible checker.
+- [x] SGLang is available as `inferdoctor check sglang`.
+- [x] Connection refusal, timeout, 401/403, 404, invalid JSON, and wrong response shape are covered.
+- [x] Xinference and Dify behavior remains backward compatible.
+- [x] CPU-only machines complete without errors.
+- [x] `inferdoctor explain <topic>` covers common local AI failures.
+- [x] `inferdoctor capacity` provides a lightweight heuristic preview without running models.
 
 ## Validation
 
-- [ ] Run `python -m pip install -e ".[dev]"`.
-- [ ] Run `inferdoctor check`.
-- [ ] Run `inferdoctor report --format json`.
-- [ ] Run `inferdoctor report --format markdown`.
-- [ ] Run `pytest`.
-- [ ] Run `git diff --check`.
-- [ ] Confirm GitHub Actions passes on all configured Python versions.
+- [x] Run `python -m pip install -e ".[dev]"` in an isolated environment.
+- [x] Run `inferdoctor`.
+- [x] Run `inferdoctor check`.
+- [x] Run `inferdoctor check sglang`.
+- [x] Run `inferdoctor report --format markdown`.
+- [x] Run `inferdoctor explain openai-compatible-404`.
+- [x] Run `inferdoctor explain cuda-toolkit-missing`.
+- [x] Run `inferdoctor capacity`.
+- [x] Run `inferdoctor capacity --vram 24`.
+- [x] Run `pytest`.
+- [x] Run `git diff --check`.
+- [ ] Confirm GitHub Actions passes on final `dev` commit.
 
-## Documentation and Governance
+## Release
 
-- [ ] README installation, quick start, status semantics, and examples are current.
-- [ ] CPU-only sample reports are sanitized.
-- [ ] `CONTRIBUTING.md` reflects the checker architecture and test requirements.
-- [ ] `SECURITY.md` points to a private reporting channel.
-- [ ] Bug and feature issue templates are available.
-- [ ] Apache License 2.0 remains present.
-
-## GitHub Release
-
-- [ ] Review the final commit on `main`.
-- [ ] Create annotated tag `v0.1.0`.
-- [ ] Push the tag.
-- [ ] Create a GitHub release with highlights, supported checks, and limitations.
-- [ ] Verify the CI badge and release links from a logged-out browser.
+- [x] Confirm package and module versions are `0.2.0`.
+- [x] Review README badges, examples, positioning, and roadmap.
+- [x] Review the final `dev` commit before merging to `main`.
+- [ ] Open PR from `dev` to `main` for v0.2.0.
+- [ ] Create and push tag `v0.2.0` only after the release merge.
+- [ ] Publish release notes with supported checks and safety limitations.

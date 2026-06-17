@@ -1,6 +1,6 @@
 # InferDoctor Report
 
-Generated: `2026-06-06T00:00:00+00:00`
+Generated: `2026-06-10T00:00:00+00:00`
 
 | Check | Status | Summary |
 | --- | --- | --- |
@@ -8,9 +8,10 @@ Generated: `2026-06-06T00:00:00+00:00`
 | nvidia | **SKIP** | nvidia-smi was not found |
 | cuda | **SKIP** | CUDA compiler was not found |
 | ollama | **SKIP** | Ollama was not found and its API is not reachable |
-| vllm | **SKIP** | vLLM-compatible endpoint is not reachable |
-| dify | **SKIP** | Dify endpoint is not reachable |
+| vllm | **SKIP** | vLLM endpoint is not reachable |
+| sglang | **SKIP** | SGLang endpoint is not reachable |
 | xinference | **SKIP** | Xinference endpoint is not reachable |
+| dify | **SKIP** | Dify endpoint is not reachable |
 
 ## system
 
@@ -46,8 +47,8 @@ CUDA compiler was not found
 
 **Suggestions**
 
-- No action is needed for CPU-only inference.
-- For CUDA workloads, install the matching CUDA toolkit or add nvcc to PATH.
+- No action is needed for CPU-only inference or many prebuilt runtimes such as Ollama.
+- Install CUDA toolkit only if you need nvcc for compilation or a runtime that requires it.
 
 ## ollama
 
@@ -55,7 +56,7 @@ Ollama was not found and its API is not reachable
 
 **Details**
 
-- http://127.0.0.1:11434/api/tags: Connection refused. The service may not be running or listening at this address.
+- http://127.0.0.1:11434/api/tags: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
 
 **Suggestions**
 
@@ -64,29 +65,29 @@ Ollama was not found and its API is not reachable
 
 ## vllm
 
-vLLM-compatible endpoint is not reachable
+vLLM endpoint is not reachable
 
 **Details**
 
-- http://127.0.0.1:8000/v1/models: Connection refused. The service may not be running or listening at this address.
+- http://127.0.0.1:8000/v1/models: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
 
 **Suggestions**
 
-- Start the vLLM OpenAI-compatible server or update endpoints.vllm.
-- No action is needed if vLLM is not used on this machine.
+- Start vLLM or verify endpoints.vllm.
+- Retry with: inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
 
-## dify
+## sglang
 
-Dify endpoint is not reachable
+SGLang endpoint is not reachable
 
 **Details**
 
-- http://127.0.0.1:5001/: Connection refused. The service may not be running or listening at this address.
+- http://127.0.0.1:30000/v1/models: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
 
 **Suggestions**
 
-- Start Dify or update endpoints.dify to its API or web base URL.
-- Check container port mappings if Dify is running in Docker.
+- Start SGLang or verify endpoints.sglang.
+- Retry with: inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
 
 ## xinference
 
@@ -94,9 +95,23 @@ Xinference endpoint is not reachable
 
 **Details**
 
-- http://127.0.0.1:9997/v1/models: Connection refused. The service may not be running or listening at this address.
+- http://127.0.0.1:9997/v1/models: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
 
 **Suggestions**
 
 - Start Xinference or update endpoints.xinference.
+- Confirm the supervisor is listening on the configured host and port.
 - No Xinference SDK is required for this check.
+
+## dify
+
+Dify endpoint is not reachable
+
+**Details**
+
+- http://127.0.0.1:5001/: Connection refused. The endpoint is not reachable; the service may not be running or may be listening on another port.
+
+**Suggestions**
+
+- Dify is optional. Add endpoints.dify to inferdoctor.yaml if you want to diagnose Dify connectivity.
+- If Dify is running, check its service status and container port mappings.

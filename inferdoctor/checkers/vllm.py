@@ -1,12 +1,7 @@
-from inferdoctor.checkers.endpoint import EndpointChecker
+from inferdoctor.checkers.openai_compatible import OpenAICompatibleChecker
 
 
-class VLLMChecker(EndpointChecker):
+class VLLMChecker(OpenAICompatibleChecker):
     name = "vllm"
     endpoint_name = "vllm"
-    probe_path = "models"
-    service_label = "vLLM-compatible"
-    offline_suggestions = [
-        "Start the vLLM OpenAI-compatible server or update endpoints.vllm.",
-        "No action is needed if vLLM is not used on this machine.",
-    ]
+    service_label = "vLLM"

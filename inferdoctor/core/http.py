@@ -6,6 +6,8 @@ from typing import Any, Dict, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from inferdoctor import __version__
+
 
 class HTTPCheckError(ConnectionError):
     pass
@@ -24,7 +26,7 @@ def get_url(url: str, timeout: float = 2.0) -> HTTPResponse:
         url,
         headers={
             "Accept": "application/json",
-            "User-Agent": "InferDoctor/0.1",
+            "User-Agent": "InferDoctor/{0}".format(__version__),
         },
         method="GET",
     )
@@ -65,13 +67,13 @@ def describe_http_error(error: HTTPCheckError) -> str:
     lowered = message.lower()
     if "connection refused" in lowered:
         return (
-            "Connection refused. The service may not be running or listening "
-            "at this address."
+            "Connection refused. The endpoint is not reachable; the service "
+            "may not be running or may be listening on another port."
         )
     if "timed out" in lowered or "timeout" in lowered:
         return (
-            "The request timed out. Increase --timeout or check whether the "
-            "service is responsive."
+            "The service did not respond in time. The runtime may be loading "
+            "a model, overloaded, or blocked by network/proxy settings. Try --timeout."
         )
     if (
         "name or service not known" in lowered

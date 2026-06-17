@@ -41,8 +41,8 @@ class CudaChecker(Checker):
                 summary="CUDA compiler was not found",
                 details=details,
                 suggestions=[
-                    "No action is needed for CPU-only inference.",
-                    "For CUDA workloads, install the matching CUDA toolkit or add nvcc to PATH.",
+                    "No action is needed for CPU-only inference or many prebuilt runtimes such as Ollama.",
+                    "Install CUDA toolkit only if you need nvcc for compilation or a runtime that requires it.",
                 ],
                 raw_data={"nvcc_path": None, "environment": environment},
             )

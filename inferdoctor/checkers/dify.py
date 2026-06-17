@@ -7,6 +7,6 @@ class DifyChecker(EndpointChecker):
     probe_path = ""
     service_label = "Dify"
     offline_suggestions = [
-        "Start Dify or update endpoints.dify to its API or web base URL.",
-        "Check container port mappings if Dify is running in Docker.",
+        "Dify is optional. Add endpoints.dify to inferdoctor.yaml if you want to diagnose Dify connectivity.",
+        "If Dify is running, check its service status and container port mappings.",
     ]
