@@ -24,6 +24,9 @@ SCENARIO_ORDER = [
     "cpu-only-fallback",
 ]
 
+OPENAI_ENDPOINTS = ("vllm", "sglang", "llamacpp", "lmstudio")
+
+
 SCENARIO_TITLES = {
     "local-chatbot": "Local chatbot",
     "rag-app": "RAG app",
@@ -52,6 +55,14 @@ def _is_warn(results: Dict[str, CheckResult], name: str) -> bool:
     return result is not None and result.status == Status.WARN
 
 
+def _any_pass(results: Dict[str, CheckResult], names) -> bool:
+    return any(_is_pass(results, name) for name in names)
+
+
+def _any_warn(results: Dict[str, CheckResult], names) -> bool:
+    return any(_is_warn(results, name) for name in names)
+
+
 def evaluate_scenarios(
     results: Iterable[CheckResult], target: Optional[str] = None
 ) -> List[ScenarioResult]:
@@ -78,7 +89,7 @@ def _local_chatbot(results: Dict[str, CheckResult]) -> ScenarioResult:
             "Ollama is available, so a local chatbot path is ready.",
             "Run inferdoctor check ollama if chat requests still fail.",
         )
-    if _is_pass(results, "vllm") or _is_pass(results, "sglang"):
+    if _any_pass(results, OPENAI_ENDPOINTS):
         return ScenarioResult(
             "local-chatbot",
             SCENARIO_TITLES["local-chatbot"],
@@ -104,7 +115,7 @@ def _rag_app(results: Dict[str, CheckResult]) -> ScenarioResult:
             "Dify is reachable, so a local RAG app path is visible.",
             "Check your app-specific embedding and vector database settings next.",
         )
-    if _is_pass(results, "vllm") or _is_pass(results, "sglang") or _is_pass(results, "ollama"):
+    if _any_pass(results, OPENAI_ENDPOINTS) or _is_pass(results, "ollama"):
         return ScenarioResult(
             "rag-app",
             SCENARIO_TITLES["rag-app"],
@@ -122,7 +133,7 @@ def _rag_app(results: Dict[str, CheckResult]) -> ScenarioResult:
 
 
 def _openai_compatible_server(results: Dict[str, CheckResult]) -> ScenarioResult:
-    if _is_pass(results, "vllm") or _is_pass(results, "sglang"):
+    if _any_pass(results, OPENAI_ENDPOINTS):
         return ScenarioResult(
             "openai-compatible-server",
             SCENARIO_TITLES["openai-compatible-server"],
@@ -130,7 +141,7 @@ def _openai_compatible_server(results: Dict[str, CheckResult]) -> ScenarioResult
             "At least one OpenAI-compatible server responded with a valid models route.",
             "Use inferdoctor report --format markdown to share endpoint details.",
         )
-    if _is_warn(results, "vllm") or _is_warn(results, "sglang"):
+    if _any_warn(results, OPENAI_ENDPOINTS):
         return ScenarioResult(
             "openai-compatible-server",
             SCENARIO_TITLES["openai-compatible-server"],
@@ -142,8 +153,8 @@ def _openai_compatible_server(results: Dict[str, CheckResult]) -> ScenarioResult
         "openai-compatible-server",
         SCENARIO_TITLES["openai-compatible-server"],
         Status.FAIL,
-        "vLLM and SGLang endpoints are not reachable.",
-        "Run inferdoctor check vllm or inferdoctor check sglang with the expected endpoint.",
+        "No OpenAI-compatible local endpoint was confirmed reachable.",
+        "Run inferdoctor check vllm, sglang, llamacpp, or lmstudio with the expected endpoint.",
     )
 
 

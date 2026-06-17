@@ -28,7 +28,7 @@ def test_openai_server_fails_when_vllm_and_sglang_offline():
     )
 
     assert scenarios[0].status == Status.FAIL
-    assert "vLLM and SGLang" in scenarios[0].reason
+    assert "OpenAI-compatible" in scenarios[0].reason
 
 
 def test_gpu_inference_passes_with_nvidia_even_if_cuda_skips():
@@ -51,3 +51,12 @@ def test_render_scenarios_is_screenshot_friendly():
     assert "Local chatbot:" in output
     assert "Status:" in output
     assert "Next step:" in output
+
+
+def test_openai_server_passes_with_lmstudio():
+    scenarios = evaluate_scenarios(
+        [_result("lmstudio", Status.PASS)],
+        "openai-compatible-server",
+    )
+
+    assert scenarios[0].status == Status.PASS

@@ -110,8 +110,12 @@ runtime does not heavily penalize an otherwise healthy machine.
 | Ollama | CLI discovery and `/api/tags` connectivity |
 | vLLM | OpenAI-compatible `/v1/models` connectivity and response shape |
 | SGLang | OpenAI-compatible `/v1/models` connectivity and response shape |
+| llama.cpp server | OpenAI-compatible `/v1/models` connectivity when server mode is enabled |
+| LM Studio | OpenAI-compatible `/v1/models` connectivity |
 | Xinference | Supervisor endpoint connectivity without the SDK |
 | Dify | Configurable Dify endpoint connectivity without the SDK |
+| Open WebUI | Lightweight web endpoint reachability |
+| Docker | Docker CLI discovery and daemon reachability without starting containers |
 
 OpenAI-compatible checks distinguish connection refusal, timeout, unauthorized
 responses, wrong base URLs, invalid JSON, and non-compatible response shapes.
@@ -154,6 +158,10 @@ inferdoctor check nvidia
 inferdoctor check ollama
 inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
 inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
+inferdoctor check llamacpp --endpoint http://127.0.0.1:8080
+inferdoctor check lmstudio --endpoint http://127.0.0.1:1234/v1
+inferdoctor check openwebui
+inferdoctor check docker
 inferdoctor check xinference
 inferdoctor check dify
 ```
@@ -200,8 +208,11 @@ endpoints:
   ollama: http://127.0.0.1:11434
   vllm: http://127.0.0.1:8000/v1
   sglang: http://127.0.0.1:30000/v1
+  llamacpp: http://127.0.0.1:8080
+  lmstudio: http://127.0.0.1:1234/v1
   xinference: http://127.0.0.1:9997
   dify: http://127.0.0.1:5001
+  openwebui: http://127.0.0.1:3000
 timeout: 2
 ```
 
@@ -329,7 +340,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 ## Roadmap
 
 - richer capacity heuristics for more hardware profiles
-- llama.cpp server and build diagnostics
+- deeper llama.cpp build and backend diagnostics
 - ONNX Runtime provider diagnostics
 - TensorRT library and version diagnostics
 - RKNN and other edge accelerator checks

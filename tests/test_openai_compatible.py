@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 import pytest
 
+from inferdoctor.checkers.llamacpp import LlamaCppChecker
+from inferdoctor.checkers.lmstudio import LMStudioChecker
 from inferdoctor.checkers.sglang import SGLangChecker
 from inferdoctor.checkers.vllm import VLLMChecker
 from inferdoctor.core.config import Config
@@ -14,6 +16,8 @@ from inferdoctor.core.models import Status
     [
         (VLLMChecker(), "http://127.0.0.1:8000/v1/models"),
         (SGLangChecker(), "http://127.0.0.1:30000/v1/models"),
+        (LlamaCppChecker(), "http://127.0.0.1:8080/v1/models"),
+        (LMStudioChecker(), "http://127.0.0.1:1234/v1/models"),
     ],
 )
 @patch("inferdoctor.checkers.openai_compatible.get_url")

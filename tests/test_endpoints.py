@@ -3,6 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from inferdoctor.checkers.dify import DifyChecker
+from inferdoctor.checkers.openwebui import OpenWebUIChecker
 from inferdoctor.checkers.xinference import XinferenceChecker
 from inferdoctor.core.config import Config
 from inferdoctor.core.http import HTTPResponse
@@ -14,6 +15,7 @@ from inferdoctor.core.models import Status
     [
         (XinferenceChecker(), "http://127.0.0.1:9997/v1/models"),
         (DifyChecker(), "http://127.0.0.1:5001/"),
+        (OpenWebUIChecker(), "http://127.0.0.1:3000/"),
     ],
 )
 @patch("inferdoctor.checkers.endpoint.get_url")

@@ -26,6 +26,7 @@ COMMAND_PATH_KEYS = {
     "nvidia_smi_path": "nvidia-smi",
     "nvcc_path": "nvcc",
     "ollama_path": "ollama",
+    "docker_path": "docker",
 }
 
 
@@ -127,7 +128,7 @@ def _command_profile(results: Dict[str, CheckResult]) -> Dict[str, Dict[str, Any
                     "available": bool(path),
                     "path": redact_value(path) if path else None,
                 }
-    for command in ("nvidia-smi", "nvcc", "ollama"):
+    for command in ("nvidia-smi", "nvcc", "ollama", "docker"):
         commands.setdefault(command, {"available": False, "path": None})
     return commands
 

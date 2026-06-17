@@ -14,6 +14,9 @@ def test_load_simple_yaml_config(tmp_path):
                 "  ollama: http://ollama.local:11434",
                 "  vllm: http://vllm.local:8000/v1/",
                 "  sglang: http://sglang.local:30000/v1/",
+                "  llamacpp: http://llamacpp.local:8080",
+                "  lmstudio: http://lmstudio.local:1234/v1/",
+                "  openwebui: http://openwebui.local:3000/",
                 "timeout: 3.5",
             ]
         ),
@@ -25,6 +28,9 @@ def test_load_simple_yaml_config(tmp_path):
     assert config.endpoints["ollama"] == "http://ollama.local:11434"
     assert config.endpoints["vllm"] == "http://vllm.local:8000/v1"
     assert config.endpoints["sglang"] == "http://sglang.local:30000/v1"
+    assert config.endpoints["llamacpp"] == "http://llamacpp.local:8080"
+    assert config.endpoints["lmstudio"] == "http://lmstudio.local:1234/v1"
+    assert config.endpoints["openwebui"] == "http://openwebui.local:3000"
     assert config.endpoints["xinference"] == "http://127.0.0.1:9997"
     assert config.timeout == 3.5
 

@@ -11,8 +11,11 @@ DEFAULT_ENDPOINTS = {
     "ollama": "http://127.0.0.1:11434",
     "vllm": "http://127.0.0.1:8000/v1",
     "sglang": "http://127.0.0.1:30000/v1",
+    "llamacpp": "http://127.0.0.1:8080",
+    "lmstudio": "http://127.0.0.1:1234/v1",
     "xinference": "http://127.0.0.1:9997",
     "dify": "http://127.0.0.1:5001",
+    "openwebui": "http://127.0.0.1:3000",
 }
 
 
