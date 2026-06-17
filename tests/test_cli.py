@@ -96,3 +96,22 @@ def test_capacity_command_does_not_run_checks(results, capsys):
     assert exit_code == 0
     assert "InferDoctor Capacity Preview" in capsys.readouterr().out
     results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+def test_scenario_command_renders_readiness(results, capsys):
+    exit_code = main(["scenario"])
+
+    assert exit_code == 0
+    assert "InferDoctor Scenario Readiness" in capsys.readouterr().out
+    results.assert_called_once_with(None, None, None, None)
+
+
+@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+def test_scenarios_alias_renders_readiness(results, capsys):
+    exit_code = main(["scenarios", "cpu-only-fallback"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "CPU-only fallback:" in output
+    assert "Local chatbot:" not in output

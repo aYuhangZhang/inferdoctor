@@ -17,6 +17,7 @@ from inferdoctor.core.config import (
 from inferdoctor.core.explain import explain_topics, render_explanation
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.runner import run_checks
+from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.reporters import render_dashboard, render_json, render_markdown
 
 
@@ -116,6 +117,23 @@ def _parser() -> argparse.ArgumentParser:
         "--gpu",
         help="Optional GPU name to show with --vram",
     )
+
+    def add_scenario_parser(name: str):
+        scenario_parser = subparsers.add_parser(
+            name,
+            help="Show goal-oriented scenario readiness",
+            description="Summarize readiness for common local AI goals using existing checks.",
+        )
+        scenario_parser.add_argument(
+            "target",
+            nargs="?",
+            choices=scenario_names(),
+            help="Scenario to show; omit to show all scenarios",
+        )
+        _add_runtime_options(scenario_parser)
+
+    add_scenario_parser("scenario")
+    add_scenario_parser("scenarios")
     return parser
 
 
@@ -171,6 +189,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "capacity":
         print(render_capacity(vram_gib=args.vram, gpu_name=args.gpu))
         return 0
+
+    if args.command in ("scenario", "scenarios"):
+        results, _ = _results_for_target(
+            None,
+            getattr(args, "config", None),
+            getattr(args, "timeout", None),
+            None,
+        )
+        print(render_scenarios(evaluate_scenarios(results, args.target)))
+        return _exit_code(results)
 
     results, config = _results_for_target(
         getattr(args, "target", None),

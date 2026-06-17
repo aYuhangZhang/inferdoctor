@@ -161,6 +161,20 @@ inferdoctor check --verbose
 inferdoctor check vllm --timeout 5
 ```
 
+## Scenario Readiness
+
+Use `inferdoctor scenario` when you want the answer framed around a goal instead
+of a component:
+
+```bash
+inferdoctor scenario
+inferdoctor scenario openai-compatible-server
+```
+
+Initial scenarios include local chatbot, RAG app, OpenAI-compatible server,
+Dify local RAG, GPU inference, and CPU-only fallback. See
+[`examples/scenario_readiness.txt`](examples/scenario_readiness.txt).
+
 ## Troubleshooting Explain
 
 Use `inferdoctor explain` when you want a short, focused explanation for a

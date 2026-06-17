@@ -1,0 +1,33 @@
+InferDoctor Scenario Readiness
+=========================================================
+Goal-oriented diagnosis for common local AI setups.
+
+Local chatbot:
+  Status: WARN
+  Reason: No local chat runtime responded, but the machine check completed.
+  Next step: Start Ollama or configure a vLLM/SGLang OpenAI-compatible endpoint.
+
+RAG app:
+  Status: WARN
+  Reason: No RAG application endpoint or model serving endpoint was confirmed.
+  Next step: Configure Dify or an OpenAI-compatible model endpoint before debugging the app layer.
+
+OpenAI-compatible server:
+  Status: FAIL
+  Reason: vLLM and SGLang endpoints are not reachable.
+  Next step: Run inferdoctor check vllm or inferdoctor check sglang with the expected endpoint.
+
+Dify local RAG:
+  Status: WARN
+  Reason: Dify is optional and was not confirmed reachable.
+  Next step: Add endpoints.dify to inferdoctor.yaml or check Dify container ports.
+
+GPU inference:
+  Status: WARN
+  Reason: No NVIDIA GPU was confirmed by nvidia-smi.
+  Next step: Use CPU fallback or repair the NVIDIA driver if GPU inference is required.
+
+CPU-only fallback:
+  Status: PASS
+  Reason: System diagnostics completed, so CPU-only fallback diagnostics are available.
+  Next step: Use small quantized models and conservative context lengths on CPU-only machines.
