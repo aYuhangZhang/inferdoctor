@@ -4,41 +4,45 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](pyproject.toml)
 
-**The doctor for your local AI inference stack.**
+**Diagnose your local AI stack in one command.**
 
-Model recommendation tools help you choose a model. InferDoctor helps you
-understand why your local AI stack is broken.
+Find out why Ollama, vLLM, SGLang, Xinference, Dify, CUDA, or your GPU setup is
+not working. InferDoctor is the doctor for local AI inference stacks: it gives
+you a screenshot-friendly health summary, top fixes, troubleshooting explainers,
+and a rough capacity preview without installing or running AI runtimes.
 
 ```bash
 inferdoctor
 ```
 
-One command gives you a health score, a component-by-component status table,
-and the three most useful next actions. InferDoctor is lightweight, read-only
-by default, and safe on machines without a GPU.
+Model recommendation tools help you choose a model. InferDoctor helps you
+understand why your local AI stack is broken.
 
 ## Example Output
 
 ```text
 InferDoctor - Local AI Stack Health Check
 =========================================================
-Overall Health: 91 / 100  (Healthy)
+Overall Health: 88 / 100  (Mostly healthy)
+Stack Summary: 3 working | 1 needs attention | 4 optional/offline | 0 failed
+Doctor's read: Some components need attention. Start with the first fix below.
 PASS 100 | WARN 60 | FAIL 0 | SKIP 85  (heuristic)
 
 Component   Status   Summary
 ----------- -------- --------------------------------------------------
 System      PASS     System information collected
 NVIDIA      PASS     1 NVIDIA GPU(s) detected
-CUDA        PASS     CUDA toolkit 12.4 detected
-Ollama      SKIP     Ollama was not found and its API is not reachable
-vLLM        SKIP     vLLM endpoint is not reachable
+CUDA        SKIP     CUDA compiler was not found
+Ollama      PASS     Ollama CLI and API are available
+vLLM        WARN     vLLM models route returned HTTP 404
 SGLang      SKIP     SGLang endpoint is not reachable
 Xinference  SKIP     Xinference endpoint is not reachable
 Dify        SKIP     Dify endpoint is not reachable
 
-Top recommended fixes:
-1. vLLM: vLLM endpoint is not reachable
-   Likely cause: The service is stopped, listening elsewhere, or the URL is incorrect.
+Top recommended fixes (most useful first):
+1. vLLM: vLLM models route returned HTTP 404
+   Likely cause: The service responded, but /v1/models was not found. The base URL may be missing or duplicating /v1.
+   Impact: Needs attention if your app depends on vLLM.
    Try: inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
    Config: endpoints.vllm: http://127.0.0.1:8000/v1
 ```
@@ -48,6 +52,20 @@ More screenshot-friendly samples:
 - [`examples/console_cpu_only.txt`](examples/console_cpu_only.txt)
 - [`examples/console_with_ollama.txt`](examples/console_with_ollama.txt)
 - [`examples/console_with_gpu.txt`](examples/console_with_gpu.txt)
+
+## Diagnose, Don't Guess
+
+Use the commands that match the question you have:
+
+```bash
+inferdoctor                              # health score, component table, top fixes
+inferdoctor explain openai-compatible-404
+inferdoctor capacity --vram 24
+inferdoctor report --format markdown
+```
+
+InferDoctor does not choose models for you. It tells you whether the local stack
+that should serve those models is actually healthy.
 
 ## Why InferDoctor?
 
@@ -100,6 +118,7 @@ For the highest-priority problems, InferDoctor shows:
 
 - the observed issue;
 - the likely cause;
+- whether the issue is optional or likely blocking;
 - the next command to run;
 - the relevant `inferdoctor.yaml` setting.
 
@@ -107,7 +126,8 @@ Example:
 
 ```text
 1. SGLang: SGLang models route returned HTTP 404
-   Likely cause: The service responded, but its route, authentication, or response format needs attention.
+   Likely cause: The service responded, but /v1/models was not found. The base URL may be missing or duplicating /v1.
+   Impact: Needs attention if your app depends on SGLang.
    Try: inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
    Config: endpoints.sglang: http://127.0.0.1:30000/v1
 ```
@@ -245,6 +265,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
+- richer capacity heuristics for more hardware profiles
 - llama.cpp server and build diagnostics
 - ONNX Runtime provider diagnostics
 - TensorRT library and version diagnostics
