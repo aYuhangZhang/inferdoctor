@@ -78,3 +78,12 @@ def test_timeout_must_be_positive(capsys):
 def test_endpoint_override_rejects_invalid_url():
     with pytest.raises(SystemExit, match="http:// or https://"):
         _results_for_target("sglang", None, endpoint="127.0.0.1:30000/v1")
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_explain_command_does_not_run_checks(results, capsys):
+    exit_code = main(["explain", "cuda-toolkit-missing"])
+
+    assert exit_code == 0
+    assert "InferDoctor Explain:" in capsys.readouterr().out
+    results.assert_not_called()

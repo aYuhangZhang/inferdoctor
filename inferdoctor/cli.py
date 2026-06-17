@@ -13,6 +13,7 @@ from inferdoctor.core.config import (
     load_config,
     normalize_endpoint,
 )
+from inferdoctor.core.explain import explain_topics, render_explanation
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.runner import run_checks
 from inferdoctor.reporters import render_dashboard, render_json, render_markdown
@@ -85,6 +86,17 @@ def _parser() -> argparse.ArgumentParser:
     )
     report.add_argument("--output", help="Write the report to this file")
     _add_runtime_options(report)
+
+    explain = subparsers.add_parser(
+        "explain",
+        help="Explain a common local AI failure",
+        description="Show a short troubleshooting guide for a known InferDoctor topic.",
+    )
+    explain.add_argument(
+        "topic",
+        choices=explain_topics(),
+        help="Troubleshooting topic to explain",
+    )
     return parser
 
 
@@ -133,6 +145,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not arguments:
         arguments = ["check"]
     args = parser.parse_args(arguments)
+
+    if args.command == "explain":
+        print(render_explanation(args.topic))
+        return 0
 
     results, config = _results_for_target(
         getattr(args, "target", None),

@@ -141,6 +141,21 @@ inferdoctor check --verbose
 inferdoctor check vllm --timeout 5
 ```
 
+
+## Troubleshooting Explain
+
+Use `inferdoctor explain` when you want a short, focused explanation for a
+common local AI failure:
+
+```bash
+inferdoctor explain openai-compatible-404
+inferdoctor explain cuda-toolkit-missing
+inferdoctor explain vllm-endpoint-not-reachable
+```
+
+Each explanation includes what the symptom means, common causes, what to try
+next, and the related InferDoctor command.
+
 ## Configuration
 
 ```yaml
