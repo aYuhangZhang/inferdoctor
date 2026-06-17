@@ -1,5 +1,7 @@
 # InferDoctor
 
+[日本語クイックスタート](README.ja.md)
+
 [![Tests](https://github.com/anguoyang/inferdoctor/actions/workflows/tests.yml/badge.svg)](https://github.com/anguoyang/inferdoctor/actions/workflows/tests.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](pyproject.toml)
