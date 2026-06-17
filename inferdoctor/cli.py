@@ -22,6 +22,18 @@ from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, sce
 from inferdoctor.reporters import render_dashboard, render_json, render_markdown
 
 
+def _model_size(value: str) -> str:
+    stripped = value.strip().lower()
+    number = stripped[:-1] if stripped.endswith("b") else stripped
+    try:
+        parsed = float(number)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a size like 7b, 14b, or 32b") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return stripped if stripped.endswith("b") else "{0:g}b".format(parsed)
+
+
 def _positive_float(value: str) -> float:
     try:
         parsed = float(value)
@@ -133,7 +145,23 @@ def _parser() -> argparse.ArgumentParser:
     )
     capacity.add_argument(
         "--gpu",
-        help="Optional GPU name to show with --vram",
+        help="GPU name to display or infer common VRAM from, for example 'RTX 3090'",
+    )
+    capacity.add_argument(
+        "--model-size",
+        type=_model_size,
+        help="Optional model size heuristic, for example 7b, 14b, or 32b",
+    )
+    capacity.add_argument(
+        "--quant",
+        choices=("q4", "q8"),
+        default="q4",
+        help="Quantization heuristic to use with --model-size",
+    )
+    capacity.add_argument(
+        "--runtime",
+        choices=("ollama", "vllm"),
+        help="Runtime heuristic to apply",
     )
 
     def add_scenario_parser(name: str):
@@ -205,7 +233,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(render_explanation(args.topic))
         return 0
     if args.command == "capacity":
-        print(render_capacity(vram_gib=args.vram, gpu_name=args.gpu))
+        print(
+            render_capacity(
+                vram_gib=args.vram,
+                gpu_name=args.gpu,
+                model_size_b=args.model_size,
+                quant=args.quant,
+                runtime=args.runtime,
+            )
+        )
         return 0
 
     if args.command in ("scenario", "scenarios"):

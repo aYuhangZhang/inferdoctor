@@ -135,3 +135,14 @@ def test_profile_command_writes_json(results, tmp_path):
     assert exit_code == 0
     assert '"safe_to_share": true' in output.read_text(encoding="utf-8")
     results.assert_called_once_with(None, None, None, None)
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_capacity_command_accepts_request_options(results, capsys):
+    exit_code = main(["capacity", "--gpu", "RTX 3090", "--model-size", "14b", "--quant", "q4", "--runtime", "ollama"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "Requested estimate:" in output
+    assert "RTX 3090" in output
+    results.assert_not_called()

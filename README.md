@@ -230,11 +230,14 @@ Use `inferdoctor capacity` for a lightweight hardware readiness estimate:
 
 ```bash
 inferdoctor capacity
-inferdoctor capacity --vram 24
+inferdoctor capacity --gpu "RTX 3090"
+inferdoctor capacity --vram 24 --model-size 14b --quant q4
+inferdoctor capacity --runtime vllm --model-size 32b
 ```
 
-Capacity estimates are rough heuristics, not benchmarks. InferDoctor does not
-download models, run inference, or recommend a model leaderboard.
+Capacity estimates are rough heuristics, not benchmarks. InferDoctor can infer
+common VRAM sizes from names such as RTX 4090, RTX 3090, or RTX 3060 12GB, but
+it does not download models, run inference, or recommend a model leaderboard.
 
 ## Reports
 
