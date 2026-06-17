@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# Local AI-assistant planning artifacts
+NIGHTLY_*.md
+*_CODEX_*.md
+*CODEX*.md
+*codex*.md
+*PROMPT*.md
+*prompt*.md
+*.transcript
+*.session.log
+.ai/
+.codex-local/
+.local-notes/
+
