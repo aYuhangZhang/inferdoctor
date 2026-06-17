@@ -52,6 +52,9 @@ More screenshot-friendly samples:
 - [`examples/console_cpu_only.txt`](examples/console_cpu_only.txt)
 - [`examples/console_with_ollama.txt`](examples/console_with_ollama.txt)
 - [`examples/console_with_gpu.txt`](examples/console_with_gpu.txt)
+- [`examples/demo_health_dashboard.txt`](examples/demo_health_dashboard.txt)
+- [`examples/demo_scenarios.txt`](examples/demo_scenarios.txt)
+- [`examples/demo_profile.md`](examples/demo_profile.md)
 
 ## Diagnose, Don't Guess
 
@@ -298,6 +301,18 @@ models for you. It diagnoses the stack you already operate.
   a system failure.
 
 Only `FAIL` causes a non-zero diagnostic exit code.
+
+## Demo Outputs
+
+Generate safe demo artifacts for screenshots, README updates, launch posts, or
+social sharing:
+
+```bash
+bash scripts/generate_demo_outputs.sh
+```
+
+The generated files live under `examples/` and use fixed sample values instead
+of probing the current machine.
 
 ## Development
 

@@ -1,0 +1,23 @@
+InferDoctor Scenario Readiness
+=========================================================
+Goal-oriented diagnosis for common local AI setups.
+
+Local chatbot:
+  Status: PASS
+  Reason: Ollama is available, so a local chatbot path is ready.
+  Next step: Run inferdoctor check ollama if chat requests still fail.
+
+RAG app:
+  Status: WARN
+  Reason: A model endpoint is available, but Dify or embedding infrastructure was not confirmed.
+  Next step: Configure Dify or verify your embedding endpoint and vector database.
+
+OpenAI-compatible server:
+  Status: WARN
+  Reason: A server responded, but the OpenAI-compatible models route needs attention.
+  Next step: Run inferdoctor explain openai-compatible-404 or retry with --endpoint.
+
+GPU inference:
+  Status: PASS
+  Reason: NVIDIA GPU is visible; CUDA toolkit may be optional for prebuilt runtimes.
+  Next step: Use inferdoctor capacity for rough workload readiness estimates.

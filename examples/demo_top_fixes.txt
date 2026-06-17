@@ -1,0 +1,18 @@
+Top recommended fixes (most useful first):
+1. SGLang: SGLang endpoint is not reachable
+   Likely cause: The service may not be running, or it may be listening on another port.
+   Impact: Optional unless SGLang is part of your local stack.
+   Try: inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
+   Config: endpoints.sglang: http://127.0.0.1:30000/v1
+
+2. CUDA: CUDA compiler was not found
+   Likely cause: NVIDIA driver is available, but CUDA toolkit was not found. This may be OK if you only use prebuilt runtimes such as Ollama.
+   Impact: Optional for CPU-only and many prebuilt runtimes; required for CUDA compilation.
+   Try: nvcc --version
+   Note: Install CUDA toolkit only if you need to compile CUDA workloads or use runtimes that require nvcc.
+
+3. Dify: Dify endpoint is not reachable
+   Likely cause: Dify is optional. If you run it locally, the service may be stopped or mapped to another port.
+   Impact: Optional unless Dify is part of your local stack.
+   Try: inferdoctor check dify --endpoint http://127.0.0.1:5001
+   Config: endpoints.dify: http://127.0.0.1:5001
