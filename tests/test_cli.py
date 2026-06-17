@@ -115,3 +115,23 @@ def test_scenarios_alias_renders_readiness(results, capsys):
     output = capsys.readouterr().out
     assert "CPU-only fallback:" in output
     assert "Local chatbot:" not in output
+
+
+@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+def test_profile_command_renders_markdown(results, capsys):
+    exit_code = main(["profile", "--format", "markdown"])
+
+    assert exit_code == 0
+    assert "InferDoctor Safe Diagnostic Profile" in capsys.readouterr().out
+    results.assert_called_once_with(None, None, None, None)
+
+
+@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+def test_profile_command_writes_json(results, tmp_path):
+    output = tmp_path / "profile.json"
+
+    exit_code = main(["profile", "--format", "json", "--output", str(output)])
+
+    assert exit_code == 0
+    assert '"safe_to_share": true' in output.read_text(encoding="utf-8")
+    results.assert_called_once_with(None, None, None, None)

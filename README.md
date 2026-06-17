@@ -61,6 +61,7 @@ Use the commands that match the question you have:
 inferdoctor                              # health score, component table, top fixes
 inferdoctor explain openai-compatible-404
 inferdoctor capacity --vram 24
+inferdoctor profile --format markdown
 inferdoctor report --format markdown
 ```
 
@@ -233,6 +234,39 @@ inferdoctor report --format markdown --output report.md
 See the sanitized samples in
 [`examples/report_cpu_only.json`](examples/report_cpu_only.json) and
 [`examples/report_cpu_only.md`](examples/report_cpu_only.md).
+
+## Safe Diagnostic Profile
+
+Use `inferdoctor profile` when you need to share environment details in an issue,
+chat, or support thread without leaking secrets by default:
+
+```bash
+inferdoctor profile --format markdown
+inferdoctor profile --format json
+inferdoctor profile --format markdown --output inferdoctor-profile.md
+```
+
+The profile includes OS, Python version, CPU architecture, RAM summary, detected
+GPU names and VRAM, command availability, configured endpoints, checker summary,
+and Top Fixes. It redacts suspicious keys such as tokens, passwords, API keys,
+authorization values, endpoint credentials, query strings, and home-directory
+paths.
+
+```markdown
+# InferDoctor Safe Diagnostic Profile
+
+## Checker Summary
+
+| Check | Status | Summary |
+| --- | --- | --- |
+| system | **PASS** | System information collected |
+| vllm | **WARN** | vLLM models route returned HTTP 404 |
+
+## Top Fixes
+
+1. **vLLM**: vLLM models route returned HTTP 404
+   - Try: `inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1`
+```
 
 ## InferDoctor vs Model Recommendation Tools
 

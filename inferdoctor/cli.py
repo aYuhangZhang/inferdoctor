@@ -16,6 +16,7 @@ from inferdoctor.core.config import (
 )
 from inferdoctor.core.explain import explain_topics, render_explanation
 from inferdoctor.core.models import CheckResult, Status
+from inferdoctor.core.profile import render_profile_json, render_profile_markdown
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.reporters import render_dashboard, render_json, render_markdown
@@ -88,6 +89,23 @@ def _parser() -> argparse.ArgumentParser:
     )
     report.add_argument("--output", help="Write the report to this file")
     _add_runtime_options(report)
+
+    profile = subparsers.add_parser(
+        "profile",
+        help="Generate a safe, redacted diagnostic profile",
+        description=(
+            "Create a shareable local AI environment profile with secrets, "
+            "endpoint credentials, query strings, and home paths redacted."
+        ),
+    )
+    profile.add_argument(
+        "--format",
+        choices=("markdown", "json"),
+        default="markdown",
+        help="Profile output format",
+    )
+    profile.add_argument("--output", help="Write the profile to this file")
+    _add_runtime_options(profile)
 
     explain = subparsers.add_parser(
         "explain",
@@ -198,6 +216,34 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             None,
         )
         print(render_scenarios(evaluate_scenarios(results, args.target)))
+        return _exit_code(results)
+
+    if args.command == "profile":
+        results, config = _results_for_target(
+            None,
+            getattr(args, "config", None),
+            getattr(args, "timeout", None),
+            None,
+        )
+        rendered = (
+            render_profile_json(results, config)
+            if args.format == "json"
+            else render_profile_markdown(results, config)
+        )
+        if args.output:
+            try:
+                Path(args.output).write_text(rendered + "\n", encoding="utf-8")
+            except OSError as exc:
+                print(
+                    "inferdoctor: could not write profile to '{0}': {1}. "
+                    "Check that the parent directory exists and is writable.".format(
+                        args.output, exc
+                    ),
+                    file=sys.stderr,
+                )
+                return 2
+        else:
+            print(rendered)
         return _exit_code(results)
 
     results, config = _results_for_target(
