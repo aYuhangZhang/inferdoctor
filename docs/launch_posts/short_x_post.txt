@@ -1,0 +1,11 @@
+Local AI is powerful, but debugging Ollama, vLLM, SGLang, Dify, CUDA, Docker, and GPU issues is painful.
+
+InferDoctor gives a one-command local AI stack health check:
+
+inferdoctor
+
+Health score, component table, Top Fixes, explain, scenarios, safe profile export, and capacity heuristics.
+
+No model downloads. No inference. Read-only by default.
+
+https://github.com/anguoyang/inferdoctor
