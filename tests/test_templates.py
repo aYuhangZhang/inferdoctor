@@ -23,14 +23,22 @@ def test_create_customer_service_template(tmp_path):
 
     assert str(tmp_path / "README.md") in written
     assert (tmp_path / "app.py").read_text(encoding="utf-8").startswith("from __future__")
-    assert "Standard shipping" in (tmp_path / "data" / "faq.md").read_text(encoding="utf-8")
+    faq = (tmp_path / "data" / "faq.md").read_text(encoding="utf-8")
+    readme = (tmp_path / "README.md").read_text(encoding="utf-8")
+    assert "Standard shipping" in faq
+    assert "Warranty" in faq
+    assert "Troubleshooting" in readme
 
 
 def test_create_restaurant_template(tmp_path):
     create_template_project("restaurant-ordering", str(tmp_path))
 
-    assert "Classic Ramen" in (tmp_path / "data" / "menu.yaml").read_text(encoding="utf-8")
-    assert "payment" in (tmp_path / "data" / "policies.md").read_text(encoding="utf-8")
+    menu = (tmp_path / "data" / "menu.yaml").read_text(encoding="utf-8")
+    policies = (tmp_path / "data" / "policies.md").read_text(encoding="utf-8")
+    assert "Classic Ramen" in menu
+    assert "Miso Ramen" in menu
+    assert "allergies" in policies
+    assert "payment" in policies
 
 
 def test_create_local_doc_qa_template(tmp_path):
@@ -39,3 +47,4 @@ def test_create_local_doc_qa_template(tmp_path):
     assert (tmp_path / "ingest.py").exists()
     assert (tmp_path / "query.py").exists()
     assert "keyword" in (tmp_path / "config.yaml").read_text(encoding="utf-8")
+    assert "Top local context matches" in (tmp_path / "query.py").read_text(encoding="utf-8")

@@ -263,6 +263,26 @@ inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
 inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
 ```
 
+## Example Prompts
+
+Try prompts such as:
+
+- What can you help me with?
+- Summarize the available context.
+- What should I check if the local endpoint fails?
+
+## Troubleshooting
+
+If the app cannot connect, run:
+
+```bash
+inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
+inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
+inferdoctor explain openai-compatible-connection-refused
+```
+
+If the response shape looks wrong, verify that your runtime exposes an OpenAI-compatible `/v1/chat/completions` route.
+
 ## Safety
 
 The template sends prompts only to the endpoint you configure. Keep it pointed at a local service if you want a local-only demo.
@@ -352,13 +372,19 @@ def _customer_service_files() -> dict[str, str]:
         "data/faq.md": """# Example FAQ
 
 ## Shipping
-Standard shipping usually takes 3-5 business days.
+Standard shipping usually takes 3-5 business days. Expedited shipping takes 1-2 business days when available.
 
 ## Returns
-Unused items can be returned within 30 days with the original receipt.
+Unused items can be returned within 30 days with the original receipt. Opened software, personalized items, and gift cards are not refundable.
+
+## Warranty
+Hardware accessories include a one-year limited warranty against manufacturing defects.
+
+## Account Help
+Customers can reset their password from the sign-in page. Support cannot view or share passwords.
 
 ## Support Hours
-Support is available Monday to Friday, 09:00-18:00 local time.
+Support is available Monday to Friday, 09:00-18:00 local time. Urgent outage reports are monitored after hours.
 """,
         "config.yaml": "endpoint: http://127.0.0.1:8000/v1\nmodel: local-model\n",
     }
@@ -379,22 +405,37 @@ def _restaurant_ordering_files() -> dict[str, str]:
         "requirements.txt": "# Standard library only. Add packages here if you extend the demo.\n",
         ".env.example": "LOCAL_AI_BASE_URL=http://127.0.0.1:8000/v1\nLOCAL_AI_MODEL=local-model\n",
         "data/menu.yaml": """restaurant: Local Noodle House
+currency: USD
 items:
   - name: Classic Ramen
     price: 12
-    options: [mild, spicy]
+    options: [mild, spicy, extra spicy]
+    allergens: [wheat, soy]
+  - name: Miso Ramen
+    price: 13
+    options: [pork, chicken, tofu]
+    allergens: [soy]
   - name: Vegetable Rice Bowl
     price: 10
     options: [regular, large]
+    allergens: [sesame]
+  - name: Gyoza
+    price: 6
+    options: [pork, vegetable]
   - name: Iced Tea
     price: 3
+  - name: Sparkling Water
+    price: 2
 """,
         "data/policies.md": """# Ordering Policies
 
 - Confirm pickup or dine-in before finalizing an order.
 - Ask about spice level when ramen is selected.
+- Ask about allergies before confirming the order.
 - Mention that prices exclude tax.
 - Do not accept payment information in chat.
+- If a requested item is unavailable, suggest the closest listed menu item.
+- End with a concise order summary.
 """,
         "config.yaml": "endpoint: http://127.0.0.1:8000/v1\nmodel: local-model\n",
     }
@@ -444,12 +485,17 @@ def main() -> None:
     if not INDEX.exists():
         print("Run python ingest.py first.")
         return
-    chunks = INDEX.read_text(encoding="utf-8").split("\n\n---\n\n")
+    chunks = [chunk for chunk in INDEX.read_text(encoding="utf-8").split("\n\n---\n\n") if chunk.strip()]
     question = input("question> ").strip()
     ranked = sorted(chunks, key=lambda chunk: score(chunk, question), reverse=True)
-    print("\nMost relevant local context:\n")
-    print(ranked[0] if ranked else "No documents indexed.")
-    print("\nNext: send this context to your configured local OpenAI-compatible endpoint.")
+    print("\nTop local context matches:\n")
+    for index, chunk in enumerate(ranked[:3], start=1):
+        print("[{0}]".format(index))
+        print(chunk[:1200])
+        print()
+    if not ranked:
+        print("No documents indexed.")
+    print("Next: send this context to your configured local OpenAI-compatible endpoint.")
 
 
 if __name__ == "__main__":
