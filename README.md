@@ -8,14 +8,20 @@
 
 **InferDoctor diagnoses your local AI stack and helps you start building local AI apps.**
 
-Diagnose your local AI stack in one command, then get a practical setup path.
-InferDoctor helps you find out why Ollama, vLLM, SGLang, Xinference, Dify,
-CUDA, OpenAI-compatible endpoints, or your GPU setup are not working, understand
-what your machine can realistically run, and create small local AI starter apps.
+Local AI setup often fails for unclear reasons: ports, CUDA, drivers, runtimes,
+OpenAI-compatible endpoints, model size, and app scaffolding all interact.
+InferDoctor gives you one command for stack health, then a beginner-friendly path
+from diagnosis to a small generated app.
+
+Use it to:
+
+- find why Ollama, vLLM, SGLang, Xinference, Dify, CUDA, NVIDIA, Docker, or local endpoints are not working;
+- estimate what your machine can realistically run with clear heuristic caveats;
+- choose a practical local AI stack for a goal such as customer service, document Q&A, or a local API;
+- generate, validate, and smoke-test starter projects without contacting a model endpoint.
 
 It is lightweight and read-only by default. It does not install AI runtimes,
-download models, run inference, or modify system settings unless a future
-explicit setup command says so.
+download models, run inference, publish data, or modify system settings.
 
 ## Install
 
@@ -38,6 +44,7 @@ python -m pip install -e .
 ```bash
 inferdoctor
 inferdoctor recommend --goal customer-service
+inferdoctor stack plan --goal customer-service
 inferdoctor stack bootstrap --goal customer-service --dry-run
 inferdoctor template create customer-service --output ./customer-service-demo
 inferdoctor template validate ./customer-service-demo
