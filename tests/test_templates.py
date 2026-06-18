@@ -24,12 +24,22 @@ def test_create_customer_service_template(tmp_path):
     written = create_template_project("customer-service", str(tmp_path))
 
     assert str(tmp_path / "README.md") in written
-    assert (tmp_path / "app.py").read_text(encoding="utf-8").startswith("from __future__")
+    app = (tmp_path / "app.py").read_text(encoding="utf-8")
     faq = (tmp_path / "data" / "faq.md").read_text(encoding="utf-8")
     readme = (tmp_path / "README.md").read_text(encoding="utf-8")
-    assert "Standard shipping" in faq
+    assert (tmp_path / "prompts" / "system_prompt.md").exists()
+    assert (tmp_path / "troubleshooting.md").exists()
+    assert (tmp_path / ".env.example").exists()
+    assert "read_env_file" in app
+    assert "read_simple_config" in app
+    assert "Billing" in faq
     assert "Warranty" in faq
-    assert "Troubleshooting" in readme
+    assert "Ollama OpenAI-compatible" in readme
+    assert "LM Studio" in readme
+    assert "vLLM" in readme
+    assert "SGLang" in readme
+    assert "Xinference" in readme
+    py_compile.compile(str(tmp_path / "app.py"), doraise=True)
 
 
 def test_create_restaurant_template(tmp_path):
@@ -37,10 +47,15 @@ def test_create_restaurant_template(tmp_path):
 
     menu = (tmp_path / "data" / "menu.yaml").read_text(encoding="utf-8")
     policies = (tmp_path / "data" / "policies.md").read_text(encoding="utf-8")
+    assert (tmp_path / "prompts" / "system_prompt.md").exists()
+    assert (tmp_path / "examples" / "sample_orders.md").exists()
+    assert (tmp_path / "troubleshooting.md").exists()
     assert "Classic Ramen" in menu
     assert "Miso Ramen" in menu
+    assert "Gyoza" in menu
     assert "allergies" in policies
     assert "payment" in policies
+    py_compile.compile(str(tmp_path / "app.py"), doraise=True)
 
 
 def test_create_local_doc_qa_template(tmp_path):
@@ -48,7 +63,10 @@ def test_create_local_doc_qa_template(tmp_path):
 
     assert (tmp_path / "ingest.py").exists()
     assert (tmp_path / "query.py").exists()
+    assert (tmp_path / ".env.example").exists()
+    assert (tmp_path / "troubleshooting.md").exists()
     assert "keyword" in (tmp_path / "config.yaml").read_text(encoding="utf-8")
     assert "Top local context matches" in (tmp_path / "query.py").read_text(encoding="utf-8")
+    assert "OpenAI-compatible endpoint" in (tmp_path / "docs" / "sample.md").read_text(encoding="utf-8")
     py_compile.compile(str(tmp_path / "ingest.py"), doraise=True)
     py_compile.compile(str(tmp_path / "query.py"), doraise=True)
