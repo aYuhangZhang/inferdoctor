@@ -23,8 +23,10 @@ Common beginner goals:
 Ask InferDoctor for a plan:
 
 ```bash
-inferdoctor stack plan --goal customer-service
+inferdoctor init --goal customer-service --preference easiest
 inferdoctor recommend --goal document-qa --preference easiest
+inferdoctor stack plan --goal customer-service
+inferdoctor stack bootstrap --goal customer-service --dry-run
 ```
 
 ## Create a Starter Project
@@ -33,9 +35,16 @@ inferdoctor recommend --goal document-qa --preference easiest
 inferdoctor template list
 inferdoctor template create customer-service --output ./customer-service-demo
 inferdoctor template validate ./customer-service-demo
+inferdoctor template smoke-test ./customer-service-demo
 ```
 
-Then edit `.env` or `config.yaml` in the generated directory.
+Then edit `.env` or `config.yaml` in the generated directory. Before calling a live endpoint, run the generated dry-run command:
+
+```bash
+cd ./customer-service-demo
+python app.py --dry-run
+python app.py --check-config
+```
 
 ## Keep the Safety Model Simple
 

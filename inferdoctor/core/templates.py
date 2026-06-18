@@ -357,6 +357,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print resolved endpoint/model settings and exit without calling the model",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show prompt, local context, and endpoint settings without calling the model",
+    )
     return parser
 
 
@@ -369,12 +374,25 @@ def main() -> None:
         print("Timeout: {0}s".format(timeout))
         print("No endpoint call was made.")
         return
-    print("Local AI starter connected to {0} with model '{1}'.".format(base_url, model))
+    if args.dry_run:
+        print("Dry run: no endpoint call was made.")
+        print("Endpoint: {0}".format(base_url))
+        print("Model: {0}".format(model))
+        print("Timeout: {0}s".format(timeout))
+        print("System prompt preview:")
+        print(load_system_prompt()[:600])
+        print("Context preview:")
+        print(load_context()[:1000])
+        print("Next: run python app.py when your local endpoint is ready.")
+        return
+    print("Local AI starter configured for {0} with model '{1}'.".format(base_url, model))
+    print("A live endpoint call happens only after you send a message.")
     print("Type 'exit' to quit. No cloud API key is required by default.")
     while True:
         try:
             message = input("you> ").strip()
-        except EOFError:
+        except (EOFError, KeyboardInterrupt):
+            print()
             break
         if message.lower() in {"exit", "quit"}:
             break
@@ -396,6 +414,14 @@ def _help_command(command: str) -> str:
     return "python query.py --help" if "query.py" in command else "python app.py --help"
 
 
+def _dry_run_command(command: str) -> str:
+    return "python query.py --dry-run" if "query.py" in command else "python app.py --dry-run"
+
+
+def _check_config_command(command: str) -> str:
+    return "python query.py --check-config" if "query.py" in command else "python app.py --check-config"
+
+
 def _base_readme(title: str, purpose: str, command: str, extra: str = "") -> str:
     return """# {title}
 
@@ -412,8 +438,25 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 cp .env.example .env
 inferdoctor template validate .
+inferdoctor template smoke-test .
 {help_command}
+{dry_run_command}
+{check_config_command}
 {command}
+```
+
+## Expected File Tree
+
+```text
+.
+├── README.md
+├── config.yaml
+├── .env.example
+├── requirements.txt
+├── troubleshooting.md
+├── app.py or query.py
+├── prompts/
+└── data/ or docs/
 ```
 
 ## Configure Your Local Endpoint
@@ -446,9 +489,10 @@ inferdoctor explain openai-compatible-connection-refused
 
 ```bash
 inferdoctor template validate .
+inferdoctor template smoke-test .
 ```
 
-Validation is read-only. It checks files, endpoint configuration, sample data, and obvious secret-like values.
+Validation is read-only. Smoke tests only run safe help, dry-run, and config-check commands. They do not install dependencies, call endpoints, or run inference.
 
 ## Troubleshooting
 
@@ -462,6 +506,8 @@ The template sends prompts only to the endpoint you configure. Keep it pointed a
         purpose=purpose,
         command=command,
         help_command=_help_command(command),
+        dry_run_command=_dry_run_command(command),
+        check_config_command=_check_config_command(command),
         endpoint_examples=_endpoint_examples_markdown(),
         extra=extra,
     )
@@ -672,14 +718,15 @@ def _local_doc_qa_files() -> dict[str, str]:
         "README.md": _base_readme(
             "Local Document Q&A",
             "A small document question-answering starter with simple Markdown ingestion and keyword retrieval fallback. It does not require a vector database.",
-            "python ingest.py && python query.py",
+            "python ingest.py && python query.py --dry-run",
             extra="""
 ## How It Works
 
 1. Put Markdown files in `docs/`.
 2. Run `python ingest.py` to build a plain-text local index.
 3. Run `python query.py` to find relevant local context.
-4. Use the printed context with your local endpoint, or extend `query.py` to call `/chat/completions`.
+4. Run `python query.py --dry-run` or `python query.py --check-config` before using a live endpoint.
+5. Use the printed context with your local endpoint, or extend `query.py` to call `/chat/completions`.
 """,
         ),
         "ingest.py": """from __future__ import annotations
@@ -711,9 +758,49 @@ if __name__ == "__main__":
         "query.py": """from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 INDEX = Path("index.txt")
+CONFIG = Path("config.yaml")
+ENV_FILE = Path(".env")
+DEFAULT_BASE_URL = "http://127.0.0.1:8000/v1"
+DEFAULT_MODEL = "local-model"
+
+
+def read_env_file(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.exists():
+        return values
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+def read_simple_config(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.exists():
+        return values
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or ":" not in line or line.startswith("-"):
+            continue
+        key, value = line.split(":", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+def load_settings() -> tuple[str, str, str]:
+    env_file = read_env_file(ENV_FILE)
+    config = read_simple_config(CONFIG)
+    base_url = os.environ.get("LOCAL_AI_BASE_URL") or env_file.get("LOCAL_AI_BASE_URL") or config.get("endpoint") or DEFAULT_BASE_URL
+    model = os.environ.get("LOCAL_AI_MODEL") or env_file.get("LOCAL_AI_MODEL") or config.get("model") or DEFAULT_MODEL
+    retrieval = config.get("retrieval") or "keyword"
+    return base_url.rstrip("/"), model, retrieval
 
 
 def tokenize(text: str) -> set[str]:
@@ -731,11 +818,35 @@ def build_parser() -> argparse.ArgumentParser:
         description="Search the local keyword index and print the most relevant Markdown chunks."
     )
     parser.add_argument("question", nargs="?", help="Question to search for; omit for interactive prompt")
+    parser.add_argument("--check-config", action="store_true", help="Print endpoint/model/retrieval settings and exit")
+    parser.add_argument("--dry-run", action="store_true", help="Show a safe retrieval preview without calling a model endpoint")
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
+    base_url, model, retrieval = load_settings()
+    if args.check_config:
+        print("Endpoint: {0}".format(base_url))
+        print("Model: {0}".format(model))
+        print("Retrieval: {0}".format(retrieval))
+        print("No endpoint call was made.")
+        return
+    if args.dry_run:
+        print("Dry run: no endpoint call was made.")
+        print("Endpoint: {0}".format(base_url))
+        print("Model: {0}".format(model))
+        print("Retrieval: {0}".format(retrieval))
+        if INDEX.exists():
+            chunks = [chunk for chunk in INDEX.read_text(encoding="utf-8").split("\\n\\n---\\n\\n") if chunk.strip()]
+            print("Indexed chunks: {0}".format(len(chunks)))
+            if chunks:
+                print("Context preview:")
+                print(chunks[0][:1000])
+        else:
+            print("Index is missing. Run python ingest.py before real queries.")
+        print("Next: run python ingest.py, then python query.py 'your question'.")
+        return
     if not INDEX.exists():
         print("Run python ingest.py first.")
         return
@@ -798,7 +909,9 @@ def create_template_project(name: str, output_dir: str) -> list[str]:
 
 
 def render_template_create_summary(name: str, output_dir: str, written: list[str]) -> str:
-    run_command = "python app.py" if name in {"customer-service", "restaurant-ordering"} else "python ingest.py && python query.py"
+    run_command = "python app.py" if name in {"customer-service", "restaurant-ordering"} else "python ingest.py && python query.py \"What is an OpenAI-compatible endpoint?\""
+    dry_run_command = "python app.py --dry-run" if name in {"customer-service", "restaurant-ordering"} else "python query.py --dry-run"
+    check_config_command = "python app.py --check-config" if name in {"customer-service", "restaurant-ordering"} else "python query.py --check-config"
     lines = [
         "InferDoctor Starter Project Created",
         "=" * 57,
@@ -814,9 +927,12 @@ def render_template_create_summary(name: str, output_dir: str, written: list[str
         "  1. cd {0}".format(output_dir),
         "  2. cp .env.example .env",
         "  3. Validate the generated project: inferdoctor template validate {0}".format(output_dir),
-        "  4. Edit .env or config.yaml for your local endpoint.",
-        "  5. Try the generated help command before running the app.",
-        "  6. {0}".format(run_command),
+        "  4. Smoke-test the project without calling a model: inferdoctor template smoke-test {0}".format(output_dir),
+        "  5. Edit .env or config.yaml for your local endpoint.",
+        "  6. Try safe generated commands before using a live endpoint:",
+        "     {0}".format(dry_run_command),
+        "     {0}".format(check_config_command),
+        "  7. {0}".format(run_command),
         "",
         "Endpoint examples:",
     ])

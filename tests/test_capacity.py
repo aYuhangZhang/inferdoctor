@@ -23,6 +23,8 @@ def test_capacity_estimate_for_24_gib_vram_marks_7b_likely_ok():
     by_workload = {row.workload: row for row in rows}
     assert by_workload["7B/8B quantized models"].readiness == "LIKELY OK"
     assert by_workload["vLLM FP16 serving"].readiness == "LIKELY OK"
+    assert by_workload["Use case: customer service"].readiness == "LIKELY OK"
+    assert by_workload["Use case: GPU optimized serving"].readiness == "LIKELY OK"
 
 
 def test_capacity_estimate_for_low_memory_is_conservative():
@@ -38,6 +40,7 @@ def test_capacity_estimate_for_low_memory_is_conservative():
     by_workload = {row.workload: row for row in rows}
     assert by_workload["32B quantized models"].readiness == "UNLIKELY"
     assert by_workload["vLLM FP16 serving"].readiness == "UNLIKELY"
+    assert by_workload["Use case: local API"].readiness == "NOT RECOMMENDED"
 
 
 def test_render_capacity_supports_manual_vram_override():

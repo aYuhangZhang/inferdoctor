@@ -1,0 +1,38 @@
+InferDoctor - Local AI Stack Health Check
+=========================================================
+Overall Health: 82 / 100  (Mostly healthy)
+Stack Summary: 3 working | 3 needs attention | 6 optional/offline | 0 failed
+Doctor's read: Some components need attention. Start with the first fix below.
+PASS 100 | WARN 60 | FAIL 0 | SKIP 85  (heuristic)
+
+Component   Status   Summary
+----------- -------- --------------------------------------------------
+System      PASS     System information collected
+NVIDIA      PASS     1 NVIDIA GPU(s) detected
+CUDA        SKIP     CUDA compiler was not found
+Ollama      PASS     Ollama CLI and API are available
+vLLM        WARN     vLLM models route returned HTTP 404
+SGLang      SKIP     SGLang endpoint is not reachable
+llama.cpp   WARN     llama.cpp models route returned HTTP 404
+LM Studio   SKIP     LM Studio endpoint is not reachable
+Xinference  SKIP     Xinference endpoint is not reachable
+Dify        SKIP     Dify endpoint is not reachable
+Open WebUI  SKIP     Open WebUI endpoint is not reachable
+Docker      WARN     Docker CLI is installed but the daemon is not...
+
+Top recommended fixes (most useful first):
+1. vLLM: vLLM models route returned HTTP 404
+   Likely cause: The service responded, but /v1/models was not found. The base URL may be missing or duplicating /v1.
+   Impact: Needs attention if your app depends on vLLM.
+   Try: inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
+   Config: endpoints.vllm: http://127.0.0.1:8000/v1
+2. llama.cpp: llama.cpp models route returned HTTP 404
+   Likely cause: The service responded, but /v1/models was not found. The base URL may be missing or duplicating /v1.
+   Impact: Needs attention if your app depends on llama.cpp.
+   Try: inferdoctor check llamacpp --endpoint http://127.0.0.1:8080/v1
+   Config: endpoints.llamacpp: http://127.0.0.1:8080/v1
+3. Docker: Docker CLI is installed but the daemon is not reachable
+   Likely cause: The Docker CLI is missing, the daemon is stopped, or the current user cannot reach the Docker daemon.
+   Impact: Required only if your local AI stack runs services in containers.
+   Try: docker info
+   Note: InferDoctor only checks Docker status; it never starts containers.

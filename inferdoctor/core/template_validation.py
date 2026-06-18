@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 import re
+import subprocess
+import sys
 from typing import List
 
 
@@ -19,6 +21,31 @@ class TemplateValidationReport:
     path: Path
     template_type: str
     items: List[TemplateValidationItem]
+
+    @property
+    def status(self) -> str:
+        if any(item.status == "FAIL" for item in self.items):
+            return "FAIL"
+        if any(item.status == "WARN" for item in self.items):
+            return "WARN"
+        return "PASS"
+
+
+@dataclass(frozen=True)
+class TemplateSmokeItem:
+    name: str
+    status: str
+    command: List[str]
+    summary: str
+    output: str = ""
+    fix: str = ""
+
+
+@dataclass(frozen=True)
+class TemplateSmokeReport:
+    path: Path
+    template_type: str
+    items: List[TemplateSmokeItem]
 
     @property
     def status(self) -> str:
@@ -160,6 +187,144 @@ def validate_template_project(path: str) -> TemplateValidationReport:
     return TemplateValidationReport(path=root, template_type=template_type, items=items)
 
 
+def _smoke_commands(template_type: str) -> list[tuple[str, list[str]]]:
+    python = sys.executable
+    if template_type in {"customer-service", "restaurant-ordering"}:
+        return [
+            ("app help", [python, "app.py", "--help"]),
+            ("app dry-run", [python, "app.py", "--dry-run"]),
+            ("app config", [python, "app.py", "--check-config"]),
+        ]
+    if template_type == "local-doc-qa":
+        return [
+            ("ingest help", [python, "ingest.py", "--help"]),
+            ("query help", [python, "query.py", "--help"]),
+            ("query dry-run", [python, "query.py", "--dry-run"]),
+            ("query config", [python, "query.py", "--check-config"]),
+        ]
+    return []
+
+
+def _command_display(command: list[str]) -> str:
+    parts = ["python" if index == 0 else part for index, part in enumerate(command)]
+    return " ".join(parts)
+
+
+def smoke_test_template_project(path: str, timeout: float = 5.0) -> TemplateSmokeReport:
+    root = Path(path).expanduser()
+    if not root.exists():
+        return TemplateSmokeReport(
+            path=root,
+            template_type="missing",
+            items=[TemplateSmokeItem("project directory", "FAIL", [], "Directory does not exist.", fix="Create a template project first.")],
+        )
+    if not root.is_dir():
+        return TemplateSmokeReport(
+            path=root,
+            template_type="invalid",
+            items=[TemplateSmokeItem("project directory", "FAIL", [], "Path is not a directory.", fix="Pass the generated template directory.")],
+        )
+    template_type = _detect_template_type(root)
+    commands = _smoke_commands(template_type)
+    if not commands:
+        return TemplateSmokeReport(
+            path=root,
+            template_type=template_type,
+            items=[TemplateSmokeItem("template type", "FAIL", [], "Template type is not supported for smoke tests.", fix="Use customer-service, restaurant-ordering, or local-doc-qa.")],
+        )
+
+    items: list[TemplateSmokeItem] = []
+    for name, command in commands:
+        entrypoint = root / command[1]
+        if not entrypoint.exists():
+            items.append(
+                TemplateSmokeItem(
+                    name=name,
+                    status="FAIL",
+                    command=command,
+                    summary="Missing {0}.".format(command[1]),
+                    fix="Regenerate the template or restore {0}.".format(command[1]),
+                )
+            )
+            continue
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            items.append(
+                TemplateSmokeItem(
+                    name=name,
+                    status="FAIL",
+                    command=command,
+                    summary="Command timed out after {0:g}s.".format(timeout),
+                    fix="Check for blocking input or long-running endpoint calls.",
+                )
+            )
+            continue
+        output = (completed.stdout + "\n" + completed.stderr).strip()
+        if completed.returncode == 0:
+            items.append(
+                TemplateSmokeItem(
+                    name=name,
+                    status="PASS",
+                    command=command,
+                    summary="Command completed without contacting an endpoint.",
+                    output=output[:600],
+                )
+            )
+        else:
+            items.append(
+                TemplateSmokeItem(
+                    name=name,
+                    status="FAIL",
+                    command=command,
+                    summary="Command exited with code {0}.".format(completed.returncode),
+                    output=output[:600],
+                    fix="Run the command manually from the template directory and inspect the error.",
+                )
+            )
+    return TemplateSmokeReport(path=root, template_type=template_type, items=items)
+
+
+def render_template_smoke_test(report: TemplateSmokeReport) -> str:
+    lines = [
+        "InferDoctor Template Smoke Test",
+        "=" * 57,
+        "Path: {0}".format(report.path),
+        "Detected template: {0}".format(report.template_type),
+        "Overall status: {0}".format(report.status),
+        "",
+        "Safe commands:",
+    ]
+    for item in report.items:
+        command = _command_display(item.command) if item.command else "n/a"
+        lines.append("  {0:<16} {1:<4} {2}".format(item.name, item.status, item.summary))
+        lines.append("    Command: {0}".format(command))
+    fixes = [item for item in report.items if item.status in {"WARN", "FAIL"} and item.fix]
+    lines.extend(["", "Top fixes:"])
+    if fixes:
+        for index, item in enumerate(fixes[:3], start=1):
+            lines.append("  {0}. {1}: {2}".format(index, item.name, item.fix))
+    else:
+        lines.append("  1. No smoke-test fixes needed. Configure .env when you are ready to use a live endpoint.")
+    lines.extend([
+        "",
+        "Next steps:",
+        "  1. Run inferdoctor template validate {0}".format(report.path),
+        "  2. Edit .env or config.yaml for your local endpoint.",
+        "  3. Run the generated app when your endpoint is ready.",
+        "",
+        "Smoke tests are read-only. They do not install dependencies, start services, call endpoints, or run model inference.",
+    ])
+    return "\n".join(lines)
+
+
 def render_template_validation(report: TemplateValidationReport) -> str:
     lines = [
         "InferDoctor Template Validation",
@@ -180,16 +345,27 @@ def render_template_validation(report: TemplateValidationReport) -> str:
     else:
         lines.append("  1. No fixes needed. Configure .env if you want to use a different local endpoint.")
     if report.template_type in {"customer-service", "restaurant-ordering"}:
-        next_command = "  python app.py --help"
+        next_commands = [
+            "python app.py --dry-run",
+            "python app.py --check-config",
+            "inferdoctor template smoke-test {0}".format(report.path),
+        ]
     elif report.template_type == "local-doc-qa":
-        next_command = "  python ingest.py --help && python query.py --help"
+        next_commands = [
+            "python ingest.py --help",
+            "python query.py --dry-run",
+            "python query.py --check-config",
+            "inferdoctor template smoke-test {0}".format(report.path),
+        ]
     else:
-        next_command = "  inferdoctor template list"
+        next_commands = ["inferdoctor template list"]
     lines.extend([
         "",
-        "Next command to try:",
+        "Next commands to try:",
         "  cd {0}".format(report.path),
-        next_command,
+    ])
+    lines.extend("  {0}".format(command) for command in next_commands)
+    lines.extend([
         "",
         "Supported layouts: customer-service, restaurant-ordering, local-doc-qa.",
         "This validation is read-only. It does not install dependencies, call endpoints, or run inference.",

@@ -1,0 +1,38 @@
+InferDoctor Stack Bootstrap Plan (Dry Run)
+=========================================================
+Goal: customer-service
+Preference: easiest
+Recommended runtime: Ollama
+Recommended template: customer-service
+Generated project path: ./customer-service-demo
+Model size class: 7B or 14B quantized
+
+Commands that would be run by a careful beginner:
+  1. inferdoctor
+  2. inferdoctor recommend --goal customer-service
+  3. inferdoctor template create customer-service --output ./customer-service-demo
+  4. inferdoctor template validate ./customer-service-demo
+  5. inferdoctor template smoke-test ./customer-service-demo
+  6. cd ./customer-service-demo
+  7. cp .env.example .env
+  8. python app.py --dry-run
+  9. python app.py --check-config
+
+What is safe in this dry run:
+  - Show this plan without changing files.
+  - Generate a starter project only when the user runs the template create command.
+  - Validate files and run dry-run smoke commands without contacting endpoints.
+
+Requires explicit user approval:
+  - Installing any local AI runtime or Python dependency.
+  - Starting Docker containers or background services.
+  - Calling a live model endpoint with user data.
+
+InferDoctor will not do automatically:
+  - Install Ollama, vLLM, SGLang, Xinference, CUDA, or GPU frameworks.
+  - Download models.
+  - Run model inference.
+  - Modify system settings or start services.
+
+Next command to actually create files:
+  inferdoctor template create customer-service --output ./customer-service-demo

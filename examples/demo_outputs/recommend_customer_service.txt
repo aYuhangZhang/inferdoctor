@@ -1,0 +1,34 @@
+InferDoctor Stack Recommendation
+=========================================================
+Goal: customer-service
+Preference: easiest
+Hardware: provided VRAM override
+VRAM: 24 GiB
+Practical fit: LIKELY OK for a practical local demo
+
+Recommendation:
+  Runtime: Ollama
+  Model size class: 7B or 14B quantized
+  Template: customer-service
+  Why: The recommendation balances your goal, preference, and available VRAM.
+
+Runtime paths:
+  Easiest: Use Ollama or LM Studio with an OpenAI-compatible endpoint, then create the customer-service template.
+  Performance: Use vLLM or SGLang after confirming the endpoint with inferdoctor check.
+
+Use-case fit:
+  - LIKELY suitable for personal chatbot, customer service chatbot, document Q&A, restaurant ordering assistant, and a local OpenAI-compatible API.
+  - Template suggestion: customer-service with validate and smoke-test before calling a live endpoint.
+
+Next commands:
+  inferdoctor
+  inferdoctor capacity --vram 24
+  inferdoctor template create customer-service --output ./customer-service-demo
+  inferdoctor template validate ./customer-service-demo
+  inferdoctor template smoke-test ./customer-service-demo
+
+Memory caveats:
+  Model size, context length, quantization, concurrent users, and runtime flags can change memory use.
+
+What InferDoctor does not know yet:
+  InferDoctor does not know which exact model, context length, prompt load, or server flags you will use yet.

@@ -22,9 +22,16 @@ from inferdoctor.core.recommendations import recommend_stack, render_recommendat
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
-from inferdoctor.core.stack_plan import build_stack_plan, render_stack_plan
+from inferdoctor.core.stack_plan import (
+    build_stack_bootstrap_plan,
+    build_stack_plan,
+    render_stack_bootstrap_plan,
+    render_stack_plan,
+)
 from inferdoctor.core.template_validation import (
+    render_template_smoke_test,
     render_template_validation,
+    smoke_test_template_project,
     validate_template_project,
 )
 from inferdoctor.core.templates import (
@@ -79,7 +86,7 @@ def _parser() -> argparse.ArgumentParser:
         description="Diagnose your local AI stack and get practical next steps for local AI apps.",
         epilog=(
             "Start here: inferdoctor | inferdoctor recommend --goal customer-service | "
-            "inferdoctor template create customer-service --output ./customer-service-demo"
+            "inferdoctor template create customer-service --output ./customer-service-demo | inferdoctor template smoke-test ./customer-service-demo"
         ),
     )
     parser.add_argument("--version", action="version", version=__version__)
@@ -116,6 +123,7 @@ def _parser() -> argparse.ArgumentParser:
         "fit",
         help="Estimate whether a model size likely fits local VRAM",
         description="Estimate memory fit using simple heuristics, not benchmarks.",
+        epilog="Examples: inferdoctor model fit --size 14b --quant q4 --vram 24 | inferdoctor model fit --size 32b --quant q4 --runtime vllm",
     )
     model_fit.add_argument(
         "--size",
@@ -191,6 +199,7 @@ def _parser() -> argparse.ArgumentParser:
             "Suggest a runtime, model size class, and starter template using "
             "lightweight hardware heuristics."
         ),
+        epilog="Examples: inferdoctor recommend --goal customer-service --vram 24 | inferdoctor recommend --goal document-qa --preference easiest",
     )
     recommend.add_argument(
         "--goal",
@@ -222,6 +231,7 @@ def _parser() -> argparse.ArgumentParser:
             "Ask a few lightweight questions and recommend a runtime path, "
             "template, and next commands. No installation is performed."
         ),
+        epilog="Examples: inferdoctor init --goal customer-service --preference easiest | inferdoctor init --goal document-qa --preference gpu",
     )
     init.add_argument(
         "--goal",
@@ -287,6 +297,7 @@ def _parser() -> argparse.ArgumentParser:
             "Recommend a runtime path, model size class, starter template, required "
             "components, and next commands. This command is advisory and read-only."
         ),
+        epilog="Examples: inferdoctor stack plan --goal customer-service --vram 24 | inferdoctor stack plan --goal restaurant-ordering --preference easiest",
     )
     stack_plan.add_argument("--goal", choices=GOALS, help="What you want to build")
     stack_plan.add_argument(
@@ -302,6 +313,35 @@ def _parser() -> argparse.ArgumentParser:
         help="Hardware source; currently auto only",
     )
     stack_plan.add_argument("--vram", type=_positive_float, help="Override detected VRAM in GiB")
+    stack_bootstrap = stack_subparsers.add_parser(
+        "bootstrap",
+        help="Show a dry-run bootstrap plan for a local AI app",
+        description=(
+            "Print the exact beginner commands for creating, validating, and smoke-testing "
+            "a local AI starter project. This is a plan, not an executor."
+        ),
+        epilog="Example: inferdoctor stack bootstrap --goal customer-service --dry-run",
+    )
+    stack_bootstrap.add_argument("--goal", choices=GOALS, help="What you want to build")
+    stack_bootstrap.add_argument(
+        "--preference",
+        choices=PREFERENCES,
+        default="easiest",
+        help="Optimize for easiest setup, performance, CPU, or GPU",
+    )
+    stack_bootstrap.add_argument(
+        "--hardware",
+        choices=("auto",),
+        default="auto",
+        help="Hardware source; currently auto only",
+    )
+    stack_bootstrap.add_argument("--vram", type=_positive_float, help="Override detected VRAM in GiB")
+    stack_bootstrap.add_argument("--output", help="Project path to show in the plan")
+    stack_bootstrap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Required safety flag; only print the plan and do not execute it",
+    )
 
     template = subparsers.add_parser(
         "template",
@@ -310,7 +350,7 @@ def _parser() -> argparse.ArgumentParser:
             "List, inspect, create, and validate local AI app templates. Template commands do not "
             "download models or install runtimes."
         ),
-        epilog="Beginner flow: inferdoctor template list | inferdoctor template create customer-service --output ./demo | inferdoctor template validate ./demo",
+        epilog="Beginner flow: inferdoctor template list | inferdoctor template create customer-service --output ./demo | inferdoctor template validate ./demo | inferdoctor template smoke-test ./demo",
     )
     template_subparsers = template.add_subparsers(
         dest="template_command", required=True
@@ -337,6 +377,7 @@ def _parser() -> argparse.ArgumentParser:
             "Generate a local starter project. This writes files only to the "
             "explicit --output directory and does not install dependencies."
         ),
+        epilog="Examples: inferdoctor template create customer-service --output ./customer-service-demo | inferdoctor template create local-doc-qa --output ./docqa-demo",
     )
     template_create.add_argument(
         "template",
@@ -356,10 +397,30 @@ def _parser() -> argparse.ArgumentParser:
             "endpoint configuration, and obvious secret-like values. No dependencies "
             "are installed and no endpoints are called."
         ),
+        epilog="Examples: inferdoctor template validate ./customer-service-demo | inferdoctor template smoke-test ./customer-service-demo",
     )
     template_validate.add_argument(
         "path",
         help="Generated template project directory to validate",
+    )
+    template_smoke = template_subparsers.add_parser(
+        "smoke-test",
+        help="Run safe dry-run checks for a generated starter project",
+        description=(
+            "Run only allowlisted help, dry-run, and config-check commands inside a generated "
+            "template directory. No dependencies are installed and no endpoints are called."
+        ),
+        epilog="Example: inferdoctor template smoke-test ./customer-service-demo",
+    )
+    template_smoke.add_argument(
+        "path",
+        help="Generated template project directory to smoke-test",
+    )
+    template_smoke.add_argument(
+        "--timeout",
+        type=_positive_float,
+        default=5.0,
+        help="Per-command timeout in seconds",
     )
 
     def add_scenario_parser(name: str):
@@ -491,6 +552,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 )
             )
             return 0
+        if args.stack_command == "bootstrap":
+            if not args.dry_run:
+                print("inferdoctor: stack bootstrap currently requires --dry-run; no commands were executed.", file=sys.stderr)
+                return 2
+            print(
+                render_stack_bootstrap_plan(
+                    build_stack_bootstrap_plan(
+                        goal=args.goal,
+                        preference=args.preference,
+                        hardware=args.hardware,
+                        vram_gib=args.vram,
+                        output_dir=args.output,
+                    )
+                )
+            )
+            return 0
     if args.command == "template":
         try:
             if args.template_command == "list":
@@ -502,6 +579,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(render_template_create_summary(args.template, args.output, written))
             elif args.template_command == "validate":
                 print(render_template_validation(validate_template_project(args.path)))
+            elif args.template_command == "smoke-test":
+                print(render_template_smoke_test(smoke_test_template_project(args.path, timeout=args.timeout)))
         except (KeyError, OSError) as exc:
             print("inferdoctor: {0}".format(exc), file=sys.stderr)
             return 2

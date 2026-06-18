@@ -1,0 +1,32 @@
+InferDoctor Capacity Preview
+=========================================================
+Heuristic estimate only. No models are downloaded or run.
+InferDoctor does not rank model names or benchmark throughput.
+
+Detected hardware:
+  CPU architecture: x86_64
+  System RAM: 31.2 GiB total, 26.5 GiB available
+  NVIDIA VRAM: 24.0 GiB
+  GPU: NVIDIA GeForce RTX 3090
+
+Workload readiness:
+Workload                          Readiness       Notes
+--------------------------------  --------------  ----------------------------------------
+Use case: personal chatbot        LIKELY OK       Try the customer-service or ollama-chat path with a small quantized model.
+Use case: customer service        LIKELY OK       Use the customer-service template, then validate and smoke-test before connecting an endpoint.
+Use case: document Q&A            LIKELY OK       Start with local-doc-qa keyword retrieval; add embeddings later.
+Use case: restaurant ordering     LIKELY OK       Use the restaurant-ordering template for a concrete local demo.
+Use case: local API               LIKELY OK       Validate /v1/models first; vLLM/SGLang need GPU headroom.
+Use case: small team RAG          LIKELY OK       Plan for embeddings, retrieval, and serving overhead beyond the chat model.
+Use case: CPU-only experiments    LIKELY OK       Good for diagnosis, templates, keyword retrieval, and very small models.
+Use case: GPU optimized serving   LIKELY OK       Use vLLM or SGLang only after NVIDIA and endpoint checks pass.
+CPU-only local AI                 POSSIBLE        Useful for embeddings, small models, and diagnostics; expect slower generation without GPU.
+Small local chat models           LIKELY OK       Best with quantized models and conservative context length.
+7B/8B quantized models            LIKELY OK       Heuristic assumes Q4-style quantization.
+14B quantized models              LIKELY OK       May need lower context length or CPU offload.
+32B quantized models              MAYBE           Memory headroom matters more than model name.
+vLLM FP16 serving                 LIKELY OK       Suitable for smaller FP16/BF16 serving; model and context still decide.
+Ollama quantized usage            LIKELY OK       Ollama-style quantized models are the intended fit for this estimate.
+
+Capacity estimates are rough heuristics, not benchmarks.
+Use inferdoctor check for actual stack health diagnostics.

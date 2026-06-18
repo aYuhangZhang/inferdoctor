@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 
 from inferdoctor.core.capacity import detect_hardware
 from inferdoctor.core.setup import GOALS, PREFERENCES, recommend_setup
@@ -22,6 +22,7 @@ class StackRecommendation:
     performance_path: str
     caveats: str
     unknowns: str
+    use_case_guidance: List[str]
 
 
 def _model_size_for(vram_gib: Optional[float], preference: str) -> str:
@@ -76,6 +77,29 @@ def _paths_for(goal: str, template: str, vram_gib: Optional[float]) -> tuple[str
     return easiest, performance
 
 
+def _use_case_guidance(goal: str, template: str, vram_gib: Optional[float], preference: str) -> list[str]:
+    if vram_gib is None:
+        memory_note = "MAYBE suitable until VRAM/RAM is provided; start with CPU-only experimentation or a small local chat."
+    elif vram_gib >= 24:
+        memory_note = "LIKELY suitable for personal chatbot, customer service chatbot, document Q&A, restaurant ordering assistant, and a local OpenAI-compatible API."
+    elif vram_gib >= 12:
+        memory_note = "LIKELY suitable for personal chatbot and small template demos; MAYBE suitable for document Q&A with conservative model/context settings."
+    elif preference == "cpu":
+        memory_note = "LIKELY suitable for CPU-only experimentation and template smoke tests; not recommended for GPU optimized serving."
+    else:
+        memory_note = "MAYBE suitable for CPU-only experimentation; not recommended for larger local serving without more memory."
+
+    if goal == "document-qa":
+        goal_note = "Template suggestion: local-doc-qa first; upgrade to Dify or a vector database after the endpoint is healthy."
+    elif goal == "restaurant-ordering":
+        goal_note = "Template suggestion: restaurant-ordering for a concrete demo with menu and policy data."
+    elif goal == "local-api":
+        goal_note = "Runtime suggestion: validate an OpenAI-compatible endpoint before building app logic."
+    else:
+        goal_note = "Template suggestion: {0} with validate and smoke-test before calling a live endpoint.".format(template)
+    return [memory_note, goal_note]
+
+
 def recommend_stack(
     goal: Optional[str] = None,
     preference: Optional[str] = None,
@@ -113,6 +137,7 @@ def recommend_stack(
         performance_path=performance_path,
         caveats=caveats,
         unknowns=unknowns,
+        use_case_guidance=_use_case_guidance(setup.goal, setup.template, resolved_vram, setup.preference),
     )
 
 
@@ -141,6 +166,11 @@ def render_recommendation(recommendation: StackRecommendation) -> str:
         "  Easiest: {0}".format(recommendation.easiest_path),
         "  Performance: {0}".format(recommendation.performance_path),
         "",
+        "Use-case fit:",
+    ]
+    lines.extend("  - {0}".format(item) for item in recommendation.use_case_guidance)
+    lines.extend([
+        "",
         "Next commands:",
         "  inferdoctor",
         "  inferdoctor capacity --vram {0}".format(_fmt_number(recommendation.vram_gib)) if recommendation.vram_gib is not None else "  inferdoctor capacity",
@@ -154,11 +184,16 @@ def render_recommendation(recommendation: StackRecommendation) -> str:
             if recommendation.template in {"customer-service", "restaurant-ordering", "local-doc-qa"}
             else "  inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1"
         ),
+        (
+            "  inferdoctor template smoke-test ./{0}-demo".format(recommendation.template)
+            if recommendation.template in {"customer-service", "restaurant-ordering", "local-doc-qa"}
+            else "  inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1"
+        ),
         "",
         "Memory caveats:",
         "  {0}".format(recommendation.caveats),
         "",
         "What InferDoctor does not know yet:",
         "  {0}".format(recommendation.unknowns),
-    ]
+    ])
     return "\n".join(lines)

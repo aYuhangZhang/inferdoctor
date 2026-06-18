@@ -1,0 +1,28 @@
+InferDoctor Template Validation
+=========================================================
+Path: ./customer-service-demo
+Detected template: customer-service
+Overall status: PASS
+
+Checks:
+  README.md          PASS Found README.md.
+  requirements.txt   PASS Found requirements.txt.
+  config.yaml        PASS Found config.yaml.
+  .env.example       PASS Found .env.example.
+  endpoint config    PASS Local endpoint configuration is present.
+  app.py             PASS Found CLI app.
+  system prompt      PASS Found system prompt.
+  sample data        PASS Found data/faq.md.
+  secret scan        PASS No obvious secrets found in text files.
+
+Top fixes:
+  1. No fixes needed. Configure .env if you want to use a different local endpoint.
+
+Next commands to try:
+  cd ./customer-service-demo
+  python app.py --dry-run
+  python app.py --check-config
+  inferdoctor template smoke-test ./customer-service-demo
+
+Supported layouts: customer-service, restaurant-ordering, local-doc-qa.
+This validation is read-only. It does not install dependencies, call endpoints, or run inference.

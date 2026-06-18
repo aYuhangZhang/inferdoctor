@@ -15,6 +15,7 @@ inferdoctor template list
 inferdoctor template show customer-service
 inferdoctor template create customer-service --output ./customer-service-demo
 inferdoctor template validate ./customer-service-demo
+inferdoctor template smoke-test ./customer-service-demo
 ```
 
 ## Configuration
@@ -31,3 +32,16 @@ LOCAL_AI_MODEL=local-model
 `inferdoctor template validate <path>` checks that required files exist, endpoint config is present, data files exist, and no obvious secret-like values were added.
 
 It does not install dependencies, call external services, or run inference.
+
+## What Template Smoke Tests Check
+
+`inferdoctor template smoke-test <path>` runs only safe commands such as:
+
+```bash
+python app.py --help
+python app.py --dry-run
+python app.py --check-config
+python query.py --dry-run
+```
+
+It uses an allowlist, a timeout, and the generated template directory as the working directory. It never installs packages, starts services, or calls model endpoints.

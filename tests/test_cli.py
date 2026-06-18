@@ -186,6 +186,22 @@ def test_template_create_writes_starter_project(results, tmp_path, capsys):
 
 
 @patch("inferdoctor.cli._results_for_target")
+def test_template_smoke_test_runs_safe_commands(results, tmp_path, capsys):
+    output_dir = tmp_path / "customer-service-demo"
+    main(["template", "create", "customer-service", "--output", str(output_dir)])
+    capsys.readouterr()
+
+    exit_code = main(["template", "smoke-test", str(output_dir)])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "InferDoctor Template Smoke Test" in output
+    assert "python app.py --dry-run" in output
+    assert "Overall status: PASS" in output
+    results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
 def test_init_command_recommends_customer_service(results, capsys):
     exit_code = main(["init", "--goal", "customer-service", "--preference", "easiest"])
 
@@ -288,3 +304,24 @@ def test_template_help_mentions_validate(capsys):
     assert exc.value.code == 0
     output = capsys.readouterr().out
     assert "template validate" in output
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_stack_bootstrap_requires_dry_run(results, capsys):
+    exit_code = main(["stack", "bootstrap", "--goal", "customer-service"])
+
+    assert exit_code == 2
+    assert "requires --dry-run" in capsys.readouterr().err
+    results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_stack_bootstrap_dry_run_outputs_plan(results, capsys):
+    exit_code = main(["stack", "bootstrap", "--goal", "customer-service", "--dry-run"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "InferDoctor Stack Bootstrap Plan (Dry Run)" in output
+    assert "inferdoctor template create customer-service" in output
+    assert "will not do automatically" in output
+    results.assert_not_called()

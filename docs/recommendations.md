@@ -23,13 +23,15 @@ inferdoctor recommend --goal local-api --preference performance --vram 24
 
 ## Beginner Flow
 
-Use `recommend` to choose a direction, then use `stack plan` and templates to turn that direction into concrete commands:
+Use `recommend` to choose a direction, then use `stack plan`, `stack bootstrap --dry-run`, and templates to turn that direction into concrete commands:
 
 ```bash
 inferdoctor recommend --goal customer-service --preference easiest
 inferdoctor stack plan --goal customer-service
+inferdoctor stack bootstrap --goal customer-service --dry-run
 inferdoctor template create customer-service --output ./customer-service-demo
 inferdoctor template validate ./customer-service-demo
+inferdoctor template smoke-test ./customer-service-demo
 ```
 
 ## Hardware Inputs

@@ -6,10 +6,13 @@ def test_model_fit_marks_14b_q4_on_24gib_likely():
 
     assert result.fit == "LIKELY OK"
     assert result.estimated_memory_gib > 0
+    assert any("document Q&A" in item for item in result.use_cases)
 
 
 def test_model_fit_marks_32b_q4_on_24gib_conservative():
     result = estimate_model_fit("32b", quant="q4", runtime="vllm", vram_gib=24)
 
     assert result.fit in {"MAYBE", "UNLIKELY"}
-    assert "InferDoctor Model Fit Advisor" in render_model_fit(result)
+    rendered = render_model_fit(result)
+    assert "InferDoctor Model Fit Advisor" in rendered
+    assert "Use-case guidance:" in rendered
