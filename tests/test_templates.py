@@ -50,6 +50,9 @@ def test_create_customer_service_template(tmp_path):
     assert "--dry-run" in help_result.stdout
     dry_run = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--dry-run"], capture_output=True, text=True, check=True)
     assert "Dry run: no endpoint call was made" in dry_run.stdout
+    assert "Local AI starter configured" in app
+    assert "A live endpoint call happens only after you send a message" in app
+    assert "KeyboardInterrupt" in app
     assert "--dry-run" in help_result.stdout
     check_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--check-config"], capture_output=True, text=True, check=True)
     assert "No endpoint call was made" in check_result.stdout

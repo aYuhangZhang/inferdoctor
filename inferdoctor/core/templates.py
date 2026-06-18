@@ -385,12 +385,14 @@ def main() -> None:
         print(load_context()[:1000])
         print("Next: run python app.py when your local endpoint is ready.")
         return
-    print("Local AI starter connected to {0} with model '{1}'.".format(base_url, model))
+    print("Local AI starter configured for {0} with model '{1}'.".format(base_url, model))
+    print("A live endpoint call happens only after you send a message.")
     print("Type 'exit' to quit. No cloud API key is required by default.")
     while True:
         try:
             message = input("you> ").strip()
-        except EOFError:
+        except (EOFError, KeyboardInterrupt):
+            print()
             break
         if message.lower() in {"exit", "quit"}:
             break
