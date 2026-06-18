@@ -71,7 +71,7 @@ def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="inferdoctor",
-        description="Find out why your local AI inference stack is not working.",
+        description="Diagnose your local AI stack and get practical next steps for local AI apps.",
         epilog="Run 'inferdoctor' for an immediate health score and top fixes.",
     )
     parser.add_argument("--version", action="version", version=__version__)
@@ -265,9 +265,9 @@ def _parser() -> argparse.ArgumentParser:
 
     template = subparsers.add_parser(
         "template",
-        help="Explore local AI starter templates",
+        help="Explore and create local AI starter templates",
         description=(
-            "List and inspect local AI app templates. Template commands do not "
+            "List, inspect, and create local AI app templates. Template commands do not "
             "download models or install runtimes."
         ),
     )
@@ -277,12 +277,12 @@ def _parser() -> argparse.ArgumentParser:
     template_subparsers.add_parser(
         "list",
         help="List available starter templates",
-        description="Show local AI app templates planned for InferDoctor.",
+        description="Show beginner-friendly local AI app templates.",
     )
     template_show = template_subparsers.add_parser(
         "show",
         help="Show details for one starter template",
-        description="Explain a template's goal, stack, hardware fit, and next command.",
+        description="Explain what a template builds, what it needs, and how to start.",
     )
     template_show.add_argument(
         "template",

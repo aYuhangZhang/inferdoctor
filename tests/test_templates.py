@@ -16,7 +16,7 @@ def test_template_catalog_contains_customer_service():
 
 
 def test_template_renderers_are_human_readable():
-    assert "InferDoctor Local AI Templates" in render_template_list()
+    assert "InferDoctor Local AI App Templates" in render_template_list()
     assert "Restaurant Ordering Assistant" in render_template_detail("restaurant-ordering")
 
 

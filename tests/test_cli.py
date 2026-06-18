@@ -154,7 +154,7 @@ def test_template_list_does_not_run_checks(results, capsys):
 
     assert exit_code == 0
     output = capsys.readouterr().out
-    assert "InferDoctor Local AI Templates" in output
+    assert "InferDoctor Local AI App Templates" in output
     assert "customer-service" in output
     results.assert_not_called()
 
@@ -166,7 +166,7 @@ def test_template_show_does_not_run_checks(results, capsys):
     assert exit_code == 0
     output = capsys.readouterr().out
     assert "Restaurant Ordering Assistant" in output
-    assert "Required stack:" in output
+    assert "Required:" in output
     results.assert_not_called()
 
 
@@ -178,7 +178,7 @@ def test_template_create_writes_starter_project(results, tmp_path, capsys):
 
     assert exit_code == 0
     output = capsys.readouterr().out
-    assert "InferDoctor Template Created" in output
+    assert "InferDoctor Starter Project Created" in output
     assert (output_dir / "README.md").exists()
     assert (output_dir / "app.py").exists()
     assert (output_dir / "data" / "faq.md").exists()
@@ -192,8 +192,8 @@ def test_init_command_recommends_customer_service(results, capsys):
     assert exit_code == 0
     output = capsys.readouterr().out
     assert "InferDoctor Guided Setup" in output
-    assert "Template: customer-service" in output
-    assert "Runtime: ollama" in output
+    assert "Use the customer-service template." in output
+    assert "Start with ollama." in output
     results.assert_not_called()
 
 
@@ -203,7 +203,7 @@ def test_init_command_recommends_document_qa_gpu(results, capsys):
 
     assert exit_code == 0
     output = capsys.readouterr().out
-    assert "Template: local-doc-qa" in output
+    assert "Use the local-doc-qa template." in output
     assert "GPU-capable" in output
     results.assert_not_called()
 
