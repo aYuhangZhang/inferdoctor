@@ -17,6 +17,8 @@ def test_validate_customer_service_template_passes(tmp_path):
     assert report.template_type == "customer-service"
     assert "InferDoctor Template Validation" in rendered
     assert "No obvious secrets" in rendered
+    assert "Project Readiness: 100 / 100" in rendered
+    assert report.readiness_score == 100
     assert "python app.py" in rendered
 
 
@@ -109,6 +111,8 @@ def test_smoke_test_customer_service_template_passes(tmp_path):
     assert report.status == "PASS"
     assert report.template_type == "customer-service"
     assert "InferDoctor Template Smoke Test" in rendered
+    assert "Project Readiness: 100 / 100" in rendered
+    assert report.readiness_score == 100
     assert "python app.py --dry-run" in rendered
     assert "do not install dependencies" in rendered
 
@@ -143,3 +147,15 @@ def test_smoke_test_unknown_template_fails(tmp_path):
 
     assert report.status == "FAIL"
     assert report.template_type == "unknown"
+
+
+
+def test_template_readiness_score_drops_for_missing_files(tmp_path):
+    create_template_project("customer-service", str(tmp_path))
+    (tmp_path / "data" / "faq.md").unlink()
+
+    report = validate_template_project(str(tmp_path))
+    rendered = render_template_validation(report)
+
+    assert report.readiness_score < 100
+    assert "Project Readiness:" in rendered
