@@ -22,6 +22,7 @@ from inferdoctor.core.recommendations import recommend_stack, render_recommendat
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
+from inferdoctor.core.stack_plan import build_stack_plan, render_stack_plan
 from inferdoctor.core.template_validation import (
     render_template_validation,
     validate_template_project,
@@ -267,6 +268,35 @@ def _parser() -> argparse.ArgumentParser:
         help="Runtime heuristic to apply",
     )
 
+    stack = subparsers.add_parser(
+        "stack",
+        help="Plan a beginner-friendly local AI app stack",
+        description="Create a read-only plan for building a local AI app on this machine.",
+    )
+    stack_subparsers = stack.add_subparsers(dest="stack_command", required=True)
+    stack_plan = stack_subparsers.add_parser(
+        "plan",
+        help="Create a local AI app stack plan",
+        description=(
+            "Recommend a runtime path, model size class, starter template, required "
+            "components, and next commands. This command is advisory and read-only."
+        ),
+    )
+    stack_plan.add_argument("--goal", choices=GOALS, help="What you want to build")
+    stack_plan.add_argument(
+        "--preference",
+        choices=PREFERENCES,
+        default="easiest",
+        help="Optimize for easiest setup, performance, CPU, or GPU",
+    )
+    stack_plan.add_argument(
+        "--hardware",
+        choices=("auto",),
+        default="auto",
+        help="Hardware source; currently auto only",
+    )
+    stack_plan.add_argument("--vram", type=_positive_float, help="Override detected VRAM in GiB")
+
     template = subparsers.add_parser(
         "template",
         help="Explore and create local AI starter templates",
@@ -440,6 +470,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
         )
         return 0
+    if args.command == "stack":
+        if args.stack_command == "plan":
+            print(
+                render_stack_plan(
+                    build_stack_plan(
+                        goal=args.goal,
+                        preference=args.preference,
+                        hardware=args.hardware,
+                        vram_gib=args.vram,
+                    )
+                )
+            )
+            return 0
     if args.command == "template":
         try:
             if args.template_command == "list":

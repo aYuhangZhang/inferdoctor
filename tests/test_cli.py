@@ -257,3 +257,15 @@ def test_template_validate_does_not_run_checks(results, tmp_path, capsys):
     assert "Overall status: PASS" in output
     assert "python app.py" in output
     results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_stack_plan_command_does_not_run_checks(results, capsys):
+    exit_code = main(["stack", "plan", "--goal", "customer-service", "--vram", "24"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "InferDoctor Local AI Stack Plan" in output
+    assert "Starter template: customer-service" in output
+    assert "inferdoctor template validate ./customer-service-demo" in output
+    results.assert_not_called()
