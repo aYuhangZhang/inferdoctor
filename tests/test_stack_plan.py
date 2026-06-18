@@ -15,6 +15,7 @@ def test_stack_plan_customer_service_with_vram():
     assert "InferDoctor Local AI Stack Plan" in rendered
     assert "inferdoctor template validate ./customer-service-demo" in rendered
     assert "Required components:" in rendered
+    assert "Use-case fit:" in rendered
 
 
 def test_stack_plan_document_qa_easiest():

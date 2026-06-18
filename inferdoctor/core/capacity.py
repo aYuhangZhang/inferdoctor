@@ -202,6 +202,71 @@ def estimate_requested_model(
     )
 
 
+def _use_case_readiness(vram: Optional[float], ram: Optional[float]) -> list[CapacityRow]:
+    rows: list[CapacityRow] = []
+    cpu_ok = _at_least(ram, 8)
+    small_gpu = _at_least(vram, 8)
+    mid_gpu = _at_least(vram, 12)
+    strong_gpu = _at_least(vram, 24)
+    rows.append(
+        CapacityRow(
+            "Use case: personal chatbot",
+            "LIKELY OK" if small_gpu or _at_least(ram, 16) else "MAYBE",
+            "Try the customer-service or ollama-chat path with a small quantized model.",
+        )
+    )
+    rows.append(
+        CapacityRow(
+            "Use case: customer service",
+            "LIKELY OK" if small_gpu or _at_least(ram, 16) else "MAYBE",
+            "Use the customer-service template, then validate and smoke-test before connecting an endpoint.",
+        )
+    )
+    rows.append(
+        CapacityRow(
+            "Use case: document Q&A",
+            "LIKELY OK" if mid_gpu or _at_least(ram, 16) else "MAYBE",
+            "Start with local-doc-qa keyword retrieval; add embeddings later.",
+        )
+    )
+    rows.append(
+        CapacityRow(
+            "Use case: restaurant ordering",
+            "LIKELY OK" if small_gpu or cpu_ok else "MAYBE",
+            "Use the restaurant-ordering template for a concrete local demo.",
+        )
+    )
+    rows.append(
+        CapacityRow(
+            "Use case: local API",
+            "LIKELY OK" if strong_gpu else "MAYBE" if mid_gpu else "NOT RECOMMENDED",
+            "Validate /v1/models first; vLLM/SGLang need GPU headroom.",
+        )
+    )
+    rows.append(
+        CapacityRow(
+            "Use case: small team RAG",
+            "LIKELY OK" if strong_gpu else "MAYBE" if mid_gpu or _at_least(ram, 32) else "NOT RECOMMENDED",
+            "Plan for embeddings, retrieval, and serving overhead beyond the chat model.",
+        )
+    )
+    rows.append(
+        CapacityRow(
+            "Use case: CPU-only experiments",
+            "LIKELY OK" if cpu_ok else "MAYBE",
+            "Good for diagnosis, templates, keyword retrieval, and very small models.",
+        )
+    )
+    rows.append(
+        CapacityRow(
+            "Use case: GPU optimized serving",
+            "LIKELY OK" if strong_gpu else "MAYBE" if mid_gpu else "NOT RECOMMENDED",
+            "Use vLLM or SGLang only after NVIDIA and endpoint checks pass.",
+        )
+    )
+    return rows
+
+
 def estimate_capacity(
     hardware: CapacityHardware, request: Optional[CapacityRequest] = None
 ) -> List[CapacityRow]:
@@ -212,6 +277,8 @@ def estimate_capacity(
         requested = estimate_requested_model(hardware, request)
         if requested is not None:
             rows.append(requested)
+
+    rows.extend(_use_case_readiness(vram, ram))
 
     rows.append(
         CapacityRow(

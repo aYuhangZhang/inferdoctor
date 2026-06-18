@@ -111,8 +111,13 @@ def render_stack_plan(plan: LocalAIStackPlan) -> str:
         "  Starter template: {0}".format(rec.template),
         "  Why: {0}".format(rec.why),
         "",
-        "Required components:",
+        "Use-case fit:",
     ]
+    lines.extend("  - {0}".format(item) for item in rec.use_case_guidance)
+    lines.extend([
+        "",
+        "Required components:",
+    ])
     lines.extend("  - {0}".format(component) for component in plan.required_components)
     lines.extend(["", "Optional components:"])
     lines.extend("  - {0}".format(component) for component in plan.optional_components)
