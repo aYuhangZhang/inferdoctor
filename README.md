@@ -413,6 +413,15 @@ bash scripts/generate_demo_outputs.sh
 The generated files live under `examples/` and use fixed sample values instead
 of probing the current machine.
 
+
+## More Guides
+
+- [Getting started](docs/getting_started.md)
+- [Templates](docs/templates.md)
+- [Stack recommendations](docs/recommendations.md)
+- [Model fit advisor](docs/model_fit.md)
+- [PyPI release workflow](docs/pypi_release.md)
+
 ## Development
 
 ```bash
