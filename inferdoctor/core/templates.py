@@ -1123,3 +1123,32 @@ def render_compose_create_summary(name: str, output_dir: str, written: list[str]
         "  docker compose config",
     ])
     return chr(10).join(lines)
+
+
+
+def render_template_registry() -> str:
+    lines = [
+        "InferDoctor Template Registry",
+        "=" * 57,
+        "Current source: built-in templates shipped with InferDoctor.",
+        "Remote/community template registries are not enabled yet.",
+        "",
+        "Built-in templates:",
+    ]
+    for template in list_templates():
+        lines.append("  - {0}: {1}".format(template.name, template.title))
+    lines.extend([
+        "",
+        "Future registry principles:",
+        "  - No remote template execution by default.",
+        "  - Templates should be generated locally and validated before use.",
+        "  - Template metadata should declare files, runtime assumptions, and safety boundaries.",
+        "  - InferDoctor should never install heavy runtimes, download models, or start services without explicit user action.",
+        "",
+        "Useful commands:",
+        "  inferdoctor template list",
+        "  inferdoctor template show customer-service",
+        "  inferdoctor template validate ./customer-service-demo",
+        "  inferdoctor template smoke-test ./customer-service-demo",
+    ])
+    return chr(10).join(lines)

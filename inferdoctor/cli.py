@@ -44,6 +44,7 @@ from inferdoctor.core.templates import (
     render_template_create_summary,
     render_template_detail,
     render_template_list,
+    render_template_registry,
     template_names,
 )
 from inferdoctor.reporters import render_dashboard, render_json, render_markdown
@@ -365,6 +366,11 @@ def _parser() -> argparse.ArgumentParser:
         help="List available starter templates",
         description="Show beginner-friendly local AI app templates.",
     )
+    template_subparsers.add_parser(
+        "registry",
+        help="Show built-in template source and future registry safety rules",
+        description="Explain built-in templates and future community template registry principles.",
+    )
     template_show = template_subparsers.add_parser(
         "show",
         help="Show details for one starter template",
@@ -610,6 +616,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         try:
             if args.template_command == "list":
                 print(render_template_list())
+            elif args.template_command == "registry":
+                print(render_template_registry())
             elif args.template_command == "show":
                 print(render_template_detail(args.template))
             elif args.template_command == "create":

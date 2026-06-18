@@ -10,6 +10,7 @@ from inferdoctor.core.templates import (
     get_template,
     render_template_detail,
     render_template_list,
+    render_template_registry,
 )
 
 
@@ -128,3 +129,12 @@ def test_create_compose_template_open_webui(tmp_path):
     assert "3000:8080" in compose
     assert "local-placeholder" in (tmp_path / ".env.example").read_text(encoding="utf-8")
     assert "open-webui" in compose_template_names()
+
+
+
+def test_template_registry_renderer():
+    rendered = render_template_registry()
+
+    assert "InferDoctor Template Registry" in rendered
+    assert "built-in templates" in rendered
+    assert "No remote template execution" in rendered

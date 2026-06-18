@@ -349,3 +349,11 @@ def test_stack_bootstrap_output_generates_files(tmp_path, capsys):
     assert "Stack Bootstrap Files Created" in capsys.readouterr().out
     assert (output / "README.md").exists()
     assert (output / "bootstrap_plan.md").exists()
+
+
+
+def test_template_registry_command(capsys):
+    exit_code = main(["template", "registry"])
+
+    assert exit_code == 0
+    assert "InferDoctor Template Registry" in capsys.readouterr().out
