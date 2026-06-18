@@ -51,6 +51,16 @@ inferdoctor template validate ./customer-service-demo
 inferdoctor template smoke-test ./customer-service-demo
 ```
 
+On the development branch, v0.5 starter workflows also include optional file generation commands:
+
+```bash
+inferdoctor template compose customer-service --output ./compose-customer-service
+inferdoctor stack bootstrap --goal customer-service --output ./customer-service-bootstrap
+inferdoctor template registry
+```
+
+These commands generate local files only. They do not pull Docker images, start containers, install runtimes, call endpoints, download models, or run inference.
+
 Model recommendation tools help you choose a model. InferDoctor helps you
 understand why your local AI stack is broken and what a practical next setup
 step could look like.
@@ -100,6 +110,7 @@ Beginner setup docs and template examples:
 - [`docs/local_ai_stacks.md`](docs/local_ai_stacks.md)
 - [`docs/openai_compatible_endpoints.md`](docs/openai_compatible_endpoints.md)
 - [`docs/template_projects.md`](docs/template_projects.md)
+- [`docs/template_registry.md`](docs/template_registry.md)
 - [`docs/hardware_and_model_fit.md`](docs/hardware_and_model_fit.md)
 - [`examples/templates/`](examples/templates/)
 

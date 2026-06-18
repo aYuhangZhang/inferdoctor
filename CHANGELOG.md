@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased / v0.4.0
+## Unreleased / v0.5.0
+
+### Development Notes
+
+- Docker Compose starter file generation for selected templates.
+- Safe stack bootstrap file generation for starter projects and setup plans.
+- Improved Dify, Open WebUI, and Ollama + Open WebUI starter guidance.
+- Local template registry foundation with conservative safety rules.
+- Project readiness scoring for template validation and smoke tests.
+- More real-world template examples for Dify, Open WebUI, Compose, and bootstrap workflows.
+
+### Safety
+
+- Compose generation writes files only; it does not pull images or start containers.
+- Bootstrap generation writes starter files only; it does not install dependencies, call endpoints, or run inference.
+- Template registry support is local-only; no remote template execution is enabled.
+- Recommendations and readiness scores remain heuristics, not benchmarks.
+
+## v0.4.0
 
 ### Highlights
 
