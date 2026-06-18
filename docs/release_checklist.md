@@ -1,6 +1,6 @@
-# v0.3.0 Release Checklist
+# v0.4.0 Release Checklist
 
-This checklist is public-facing release preparation for InferDoctor v0.3.0. It should stay free of private workflow notes, transcripts, and internal planning artifacts.
+This checklist is public-facing release preparation for InferDoctor v0.4.0. It should stay free of private workflow notes, transcripts, and internal planning artifacts.
 
 ## Product Experience
 
@@ -35,16 +35,23 @@ This checklist is public-facing release preparation for InferDoctor v0.3.0. It s
 - [x] Unit tests: `pytest`.
 - [x] Documentation review for install wording, safety claims, and beginner flow.
 - [x] README install wording does not claim PyPI availability before publication.
-- [x] Public release notes draft exists for v0.3.0.
+- [x] Public release notes draft exists for v0.4.0.
 - [x] Internal artifact scan is part of pre-commit/final validation.
 
 ## Release Preparation
 
-- [x] Confirm package and module versions are `0.3.0` on the release branch.
+- [x] Confirm package and module versions are `0.4.0` on the release branch.
 - [ ] Confirm GitHub Actions passes on the final `dev` commit.
 - [ ] Review final diff before merging `dev` to `main`.
-- [ ] Merge `dev` to `main` only when v0.3.0 is approved for release.
-- [ ] Create and push tag `v0.3.0` only after the release merge.
-- [ ] Publish GitHub Release notes from `docs/releases/v0.3.0.md`.
+- [ ] Merge `dev` to `main` only when v0.4.0 is approved for release.
+- [ ] Create and push tag `v0.4.0` only after the release merge.
+- [ ] Publish GitHub Release notes from `docs/releases/v0.4.0.md`.
 - [ ] Run PyPI readiness check before publishing.
 - [ ] Publish to PyPI only when credentials and release approval are explicitly available.
+
+## v0.4.0 Setup-Assistant Smoke Tests
+
+- [x] Run  against a generated customer-service template.
+- [x] Run .
+- [x] Confirm golden demo outputs exist under .
+- [x] Confirm README install wording does not claim PyPI availability before publish.
