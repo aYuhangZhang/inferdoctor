@@ -42,11 +42,20 @@ def test_create_customer_service_template(tmp_path):
     assert "SGLang" in readme
     assert "Xinference" in readme
     assert "inferdoctor template validate ." in readme
+    assert "inferdoctor template smoke-test ." in readme
+    assert "Expected File Tree" in readme
     py_compile.compile(str(tmp_path / "app.py"), doraise=True)
     help_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--help"], capture_output=True, text=True, check=True)
     assert "--check-config" in help_result.stdout
+    assert "--dry-run" in help_result.stdout
+    dry_run = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--dry-run"], capture_output=True, text=True, check=True)
+    assert "Dry run: no endpoint call was made" in dry_run.stdout
+    assert "--dry-run" in help_result.stdout
     check_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--check-config"], capture_output=True, text=True, check=True)
     assert "No endpoint call was made" in check_result.stdout
+    dry_run = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--dry-run"], capture_output=True, text=True, check=True)
+    assert "Dry run: no endpoint call was made" in dry_run.stdout
+    assert "Context preview" in dry_run.stdout
 
 
 def test_create_restaurant_template(tmp_path):
@@ -83,3 +92,9 @@ def test_create_local_doc_qa_template(tmp_path):
     query_help = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--help"], capture_output=True, text=True, check=True)
     assert "Markdown files" in ingest_help.stdout
     assert "keyword index" in query_help.stdout
+    assert "--dry-run" in query_help.stdout
+    assert "--check-config" in query_help.stdout
+    query_config = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--check-config"], capture_output=True, text=True, check=True)
+    assert "No endpoint call was made" in query_config.stdout
+    query_dry_run = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--dry-run"], capture_output=True, text=True, check=True)
+    assert "Dry run: no endpoint call was made" in query_dry_run.stdout
