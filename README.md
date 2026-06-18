@@ -8,17 +8,22 @@
 
 **Diagnose your local AI stack in one command.**
 
-Find out why Ollama, vLLM, SGLang, Xinference, Dify, CUDA, or your GPU setup is
-not working. InferDoctor is the doctor for local AI inference stacks: it gives
-you a screenshot-friendly health summary, top fixes, troubleshooting explainers,
-and a rough capacity preview without installing or running AI runtimes.
+InferDoctor is a local AI stack doctor and setup assistant. It helps you find
+out why Ollama, vLLM, SGLang, Xinference, Dify, CUDA, or your GPU setup is not
+working, understand what your machine can realistically run, and get started
+with practical local AI templates.
+
+It gives you a screenshot-friendly health summary, top fixes, troubleshooting
+explainers, and rough capacity guidance without installing or running AI
+runtimes by default.
 
 ```bash
 inferdoctor
 ```
 
 Model recommendation tools help you choose a model. InferDoctor helps you
-understand why your local AI stack is broken.
+understand why your local AI stack is broken and what a practical next setup
+step could look like.
 
 ## Example Output
 
@@ -57,6 +62,16 @@ More screenshot-friendly samples:
 - [`examples/demo_health_dashboard.txt`](examples/demo_health_dashboard.txt)
 - [`examples/demo_scenarios.txt`](examples/demo_scenarios.txt)
 - [`examples/demo_profile.md`](examples/demo_profile.md)
+
+## From Broken Stack to Working App
+
+InferDoctor starts with diagnosis, then guides the next step. The project is
+evolving toward hardware-aware stack recommendations, app templates, generated
+configuration, and dry-run bootstrap scripts that help beginners move from a
+failing local setup to a small working local AI application.
+
+The default behavior remains lightweight and read-only. Setup guidance and
+template generation should be explicit user actions, not hidden side effects.
 
 ## Diagnose, Don't Guess
 
@@ -344,6 +359,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
+- guided local AI setup with `inferdoctor init`
+- hardware-aware stack recommendations
+- practical app templates and a template generator
+- dry-run bootstrap scripts for explicit setup flows
+- model and runtime fit advisor heuristics
 - richer capacity heuristics for more hardware profiles
 - deeper llama.cpp build and backend diagnostics
 - ONNX Runtime provider diagnostics
