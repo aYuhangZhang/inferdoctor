@@ -1,12 +1,33 @@
 from __future__ import annotations
 
 import platform
+import re
 from dataclasses import dataclass
 from typing import List, Optional
 
 from inferdoctor.checkers.nvidia import NvidiaChecker
 from inferdoctor.core.config import Config
 from inferdoctor.core.models import Status
+
+GPU_VRAM_PROFILES = {
+    "rtx 4090": 24.0,
+    "rtx 3090": 24.0,
+    "rtx 4080": 16.0,
+    "rtx 4070 ti": 12.0,
+    "rtx 4070": 12.0,
+    "rtx 4060 ti": 16.0,
+    "rtx 3060": 12.0,
+    "a100 80gb": 80.0,
+    "a100": 40.0,
+    "h100": 80.0,
+    "l40s": 48.0,
+    "t4": 16.0,
+}
+
+QUANT_BYTES_PER_PARAM = {
+    "q4": 0.65,
+    "q8": 1.1,
+}
 
 
 @dataclass(frozen=True)
@@ -17,6 +38,13 @@ class CapacityHardware:
     vram_gib: Optional[float]
     gpu_name: Optional[str] = None
     vram_source: str = "detected"
+
+
+@dataclass(frozen=True)
+class CapacityRequest:
+    model_size_b: Optional[float] = None
+    quant: str = "q4"
+    runtime: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -56,6 +84,33 @@ def _detect_vram() -> tuple[Optional[float], Optional[str]]:
     return best_memory / 1024, best_name
 
 
+def infer_vram_from_gpu_name(gpu_name: Optional[str]) -> Optional[float]:
+    if not gpu_name:
+        return None
+    normalized = gpu_name.lower().replace("nvidia", "").replace("geforce", "")
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+
+    explicit = re.search(r"(\d+(?:\.\d+)?)\s*g(?:i?b)?", normalized)
+    if explicit:
+        return float(explicit.group(1))
+
+    for key, vram in sorted(GPU_VRAM_PROFILES.items(), key=lambda item: -len(item[0])):
+        if key in normalized:
+            return vram
+    return None
+
+
+def parse_model_size_b(value: Optional[object]) -> Optional[float]:
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().lower()
+    if text.endswith("b"):
+        text = text[:-1]
+    return float(text)
+
+
 def detect_hardware(
     vram_gib: Optional[float] = None,
     gpu_name: Optional[str] = None,
@@ -63,6 +118,10 @@ def detect_hardware(
     detected_vram = vram_gib
     detected_gpu = gpu_name
     source = "override" if vram_gib is not None else "detected"
+    if detected_vram is None and gpu_name is not None:
+        detected_vram = infer_vram_from_gpu_name(gpu_name)
+        if detected_vram is not None:
+            source = "gpu-profile"
     if detected_vram is None:
         detected_vram, detected_gpu = _detect_vram()
     elif detected_gpu is None:
@@ -90,10 +149,71 @@ def _either(
     return _at_least(vram, vram_min) or _at_least(ram, ram_min)
 
 
-def estimate_capacity(hardware: CapacityHardware) -> List[CapacityRow]:
+def estimate_model_memory_gib(
+    model_size_b: float,
+    quant: str = "q4",
+    runtime: Optional[str] = None,
+) -> float:
+    bytes_per_param = QUANT_BYTES_PER_PARAM.get(quant, QUANT_BYTES_PER_PARAM["q4"])
+    memory = model_size_b * bytes_per_param + 2.0
+    if runtime == "vllm":
+        memory += max(2.0, model_size_b * 0.12)
+    elif runtime == "ollama":
+        memory += 1.0
+    return round(memory, 1)
+
+
+def estimate_requested_model(
+    hardware: CapacityHardware, request: CapacityRequest
+) -> Optional[CapacityRow]:
+    if request.model_size_b is None and request.runtime is None:
+        return None
+
+    model_size = request.model_size_b or 7.0
+    quant = request.quant or "q4"
+    required = estimate_model_memory_gib(model_size, quant, request.runtime)
+    memory = hardware.vram_gib if hardware.vram_gib is not None else hardware.total_ram_gib
+    memory_label = "VRAM" if hardware.vram_gib is not None else "system RAM"
+
+    if memory is None:
+        readiness = "UNKNOWN"
+        note = "No memory figure was available for this heuristic."
+    elif memory >= required + 4:
+        readiness = "LIKELY OK"
+        note = "Estimated {0} need is about {1:.1f} GiB; {2} has headroom.".format(
+            quant.upper(), required, memory_label
+        )
+    elif memory >= required:
+        readiness = "MAYBE"
+        note = "Estimated {0} need is about {1:.1f} GiB; reduce context if needed.".format(
+            quant.upper(), required
+        )
+    else:
+        readiness = "UNLIKELY"
+        note = "Estimated {0} need is about {1:.1f} GiB, above available {2}.".format(
+            quant.upper(), required, memory_label
+        )
+
+    runtime = request.runtime or "generic"
+    return CapacityRow(
+        "Requested {0:g}B {1} on {2}".format(model_size, quant.upper(), runtime),
+        readiness,
+        note,
+    )
+
+
+def estimate_capacity(
+    hardware: CapacityHardware, request: Optional[CapacityRequest] = None
+) -> List[CapacityRow]:
     ram = hardware.total_ram_gib
     vram = hardware.vram_gib
-    rows = [
+    rows: List[CapacityRow] = []
+    if request is not None:
+        requested = estimate_requested_model(hardware, request)
+        if requested is not None:
+            rows.append(requested)
+
+    rows.append(
         CapacityRow(
             "CPU-only local AI",
             "LIMITED" if not _at_least(ram, 16) else "POSSIBLE",
@@ -102,7 +222,7 @@ def estimate_capacity(hardware: CapacityHardware) -> List[CapacityRow]:
                 "expect slower generation without GPU."
             ),
         )
-    ]
+    )
 
     small_ok = _either(vram, ram, 6, 12)
     rows.append(
@@ -193,17 +313,29 @@ def _fmt_gib(value: Optional[float]) -> str:
 def render_capacity(
     vram_gib: Optional[float] = None,
     gpu_name: Optional[str] = None,
+    model_size_b: Optional[object] = None,
+    quant: str = "q4",
+    runtime: Optional[str] = None,
 ) -> str:
     hardware = detect_hardware(vram_gib=vram_gib, gpu_name=gpu_name)
-    rows = estimate_capacity(hardware)
+    request = CapacityRequest(
+        model_size_b=parse_model_size_b(model_size_b),
+        quant=quant,
+        runtime=runtime,
+    )
+    rows = estimate_capacity(hardware, request)
     gpu_label = hardware.gpu_name or "none detected"
     vram_label = _fmt_gib(hardware.vram_gib)
     if hardware.vram_source == "override":
         vram_label += " (override)"
+    elif hardware.vram_source == "gpu-profile":
+        vram_label += " (GPU profile heuristic)"
+
     lines = [
         "InferDoctor Capacity Preview",
         "=" * 57,
         "Heuristic estimate only. No models are downloaded or run.",
+        "InferDoctor does not rank model names or benchmark throughput.",
         "",
         "Detected hardware:",
         "  CPU architecture: {0}".format(hardware.architecture),
@@ -212,15 +344,33 @@ def render_capacity(
         ),
         "  NVIDIA VRAM: {0}".format(vram_label),
         "  GPU: {0}".format(gpu_label),
-        "",
-        "Workload readiness:",
-        "Workload                    Readiness       Notes",
-        "--------------------------  --------------  ----------------------------------------",
     ]
+    if request.model_size_b is not None or request.runtime is not None:
+        lines.extend(
+            [
+                "",
+                "Requested estimate:",
+                "  Model size: {0}".format(
+                    "{0:g}B".format(request.model_size_b)
+                    if request.model_size_b is not None
+                    else "not specified"
+                ),
+                "  Quantization: {0}".format(request.quant.upper()),
+                "  Runtime: {0}".format(request.runtime or "generic"),
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "Workload readiness:",
+            "Workload                          Readiness       Notes",
+            "--------------------------------  --------------  ----------------------------------------",
+        ]
+    )
     for row in rows:
         lines.append(
-            "{0:<26}  {1:<14}  {2}".format(
-                row.workload[:26], row.readiness, row.note
+            "{0:<32}  {1:<14}  {2}".format(
+                row.workload[:32], row.readiness, row.note
             )
         )
     lines.extend([

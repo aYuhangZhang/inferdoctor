@@ -69,8 +69,11 @@ def _endpoint_fix(result: CheckResult, config: Config) -> RecommendedFix:
     label = {
         "vllm": "vLLM",
         "sglang": "SGLang",
+        "llamacpp": "llama.cpp",
+        "lmstudio": "LM Studio",
         "xinference": "Xinference",
         "dify": "Dify",
+        "openwebui": "Open WebUI",
         "ollama": "Ollama",
     }[result.name]
     summary = result.summary.lower()
@@ -150,6 +153,18 @@ def _fix_for(
             ),
             impact="Optional for CPU-only and many prebuilt runtimes; required for CUDA compilation.",
         )
+    if result.name == "docker":
+        return RecommendedFix(
+            component="Docker",
+            issue=result.summary,
+            likely_cause=(
+                "The Docker CLI is missing, the daemon is stopped, or the current "
+                "user cannot reach the Docker daemon."
+            ),
+            next_command="docker info",
+            config_hint="InferDoctor only checks Docker status; it never starts containers.",
+            impact="Required only if your local AI stack runs services in containers.",
+        )
     return RecommendedFix(
         component=result.name.title(),
         issue=result.summary,
@@ -168,8 +183,11 @@ def recommend_fixes(
         "vllm": 0,
         "sglang": 1,
         "ollama": 2,
-        "dify": 3,
-        "xinference": 4,
+        "llamacpp": 3,
+        "lmstudio": 4,
+        "dify": 5,
+        "xinference": 6,
+        "openwebui": 7,
     }
 
     def priority(result: CheckResult):

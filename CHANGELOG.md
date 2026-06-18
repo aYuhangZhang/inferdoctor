@@ -1,6 +1,26 @@
 # Changelog
 
-## Unreleased / v0.2.0
+## Unreleased / v0.3.0
+
+### Highlights
+
+- Template catalog for common local AI app goals.
+- Starter project generation for customer service, restaurant ordering, and local document Q&A demos.
+- Guided `inferdoctor init` setup path.
+- Hardware-aware `inferdoctor recommend` stack recommendations.
+- Heuristic `inferdoctor model fit` advisor.
+- Improved generated starter templates with local endpoint config and troubleshooting.
+- Beginner documentation for getting started, templates, recommendations, model fit, and local AI concepts.
+- Public v0.3.0 release readiness checks and install smoke test coverage.
+
+### Safety
+
+- No heavy AI runtime dependencies were added.
+- No model download or model execution commands were added.
+- Template generation writes only to the explicit output directory.
+- Recommendations and model-fit estimates remain heuristics, not benchmarks.
+
+## v0.2.0
 
 ### Highlights
 

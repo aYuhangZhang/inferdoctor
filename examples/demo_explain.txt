@@ -1,0 +1,18 @@
+InferDoctor Explain: OpenAI-compatible endpoint returned 404
+============================================================
+
+What it means:
+The server responded, but the route InferDoctor checked was not found.
+
+Common causes:
+- The endpoint is missing the /v1 prefix.
+- The server exposes a web UI but not an OpenAI-compatible API.
+- A reverse proxy is routing /v1/models incorrectly.
+
+What to try next:
+- Try adding /v1 to the configured endpoint.
+- Check whether /v1/models exists in the runtime logs.
+- Retry the component check with --endpoint.
+
+Related command:
+inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1

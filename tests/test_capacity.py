@@ -1,4 +1,12 @@
-from inferdoctor.core.capacity import CapacityHardware, estimate_capacity, render_capacity
+from inferdoctor.core.capacity import (
+    CapacityHardware,
+    CapacityRequest,
+    estimate_capacity,
+    estimate_model_memory_gib,
+    infer_vram_from_gpu_name,
+    parse_model_size_b,
+    render_capacity,
+)
 
 
 def test_capacity_estimate_for_24_gib_vram_marks_7b_likely_ok():
@@ -39,3 +47,37 @@ def test_render_capacity_supports_manual_vram_override():
     assert "24.0 GiB (override)" in output
     assert "Manual GPU" in output
     assert "rough heuristics, not benchmarks" in output
+
+
+def test_gpu_name_can_infer_common_vram():
+    assert infer_vram_from_gpu_name("RTX 3090") == 24.0
+    assert infer_vram_from_gpu_name("RTX 3060 12GB") == 12.0
+
+
+def test_model_size_parser_accepts_b_suffix():
+    assert parse_model_size_b("14b") == 14.0
+    assert parse_model_size_b("32") == 32.0
+
+
+def test_requested_model_estimate_uses_quant_and_runtime():
+    hardware = CapacityHardware(
+        architecture="x86_64",
+        total_ram_gib=64,
+        available_ram_gib=48,
+        vram_gib=24,
+        gpu_name="RTX 3090",
+    )
+
+    rows = estimate_capacity(hardware, CapacityRequest(model_size_b=14, quant="q4", runtime="ollama"))
+
+    assert rows[0].workload == "Requested 14B Q4 on ollama"
+    assert rows[0].readiness == "LIKELY OK"
+    assert estimate_model_memory_gib(14, "q8", "vllm") > estimate_model_memory_gib(14, "q4", "ollama")
+
+
+def test_render_capacity_supports_gpu_profile_and_request():
+    output = render_capacity(gpu_name="RTX 3090", model_size_b="14b", quant="q4", runtime="ollama")
+
+    assert "24.0 GiB (GPU profile heuristic)" in output
+    assert "Requested estimate:" in output
+    assert "Requested 14B Q4 on ollam" in output

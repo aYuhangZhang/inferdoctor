@@ -1,0 +1,14 @@
+InferDoctor Capacity Preview
+=========================================================
+Detected GPU: Example NVIDIA RTX 3090
+Detected VRAM: 24.0 GiB
+
+This is a rough planning heuristic, not a benchmark.
+InferDoctor does not download models or run inference.
+
+Workload class             Readiness     Notes
+-------------------------  ------------  ------------------------------------
+Small local chat           Likely OK      7B-class quantized models are realistic.
+Medium local chat          Likely OK      14B-class quantized models may fit.
+Large local chat           Needs care     32B-class workloads depend on quantization and context.
+High-throughput serving    Needs care     Validate runtime, batching, and KV cache behavior.

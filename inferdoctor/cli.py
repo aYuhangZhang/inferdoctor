@@ -15,9 +15,38 @@ from inferdoctor.core.config import (
     normalize_endpoint,
 )
 from inferdoctor.core.explain import explain_topics, render_explanation
+from inferdoctor.core.model_fit import estimate_model_fit, render_model_fit
 from inferdoctor.core.models import CheckResult, Status
+from inferdoctor.core.profile import render_profile_json, render_profile_markdown
+from inferdoctor.core.recommendations import recommend_stack, render_recommendation
 from inferdoctor.core.runner import run_checks
+from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
+from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
+from inferdoctor.core.stack_plan import build_stack_plan, render_stack_plan
+from inferdoctor.core.template_validation import (
+    render_template_validation,
+    validate_template_project,
+)
+from inferdoctor.core.templates import (
+    create_template_project,
+    render_template_create_summary,
+    render_template_detail,
+    render_template_list,
+    template_names,
+)
 from inferdoctor.reporters import render_dashboard, render_json, render_markdown
+
+
+def _model_size(value: str) -> str:
+    stripped = value.strip().lower()
+    number = stripped[:-1] if stripped.endswith("b") else stripped
+    try:
+        parsed = float(number)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a size like 7b, 14b, or 32b") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return stripped if stripped.endswith("b") else "{0:g}b".format(parsed)
 
 
 def _positive_float(value: str) -> float:
@@ -47,8 +76,11 @@ def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="inferdoctor",
-        description="Find out why your local AI inference stack is not working.",
-        epilog="Run 'inferdoctor' for an immediate health score and top fixes.",
+        description="Diagnose your local AI stack and get practical next steps for local AI apps.",
+        epilog=(
+            "Start here: inferdoctor | inferdoctor recommend --goal customer-service | "
+            "inferdoctor template create customer-service --output ./customer-service-demo"
+        ),
     )
     parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command")
@@ -74,6 +106,40 @@ def _parser() -> argparse.ArgumentParser:
     )
     _add_runtime_options(check)
 
+    model = subparsers.add_parser(
+        "model",
+        help="Estimate local model fit",
+        description="Lightweight model sizing helpers. No models are downloaded or run.",
+    )
+    model_subparsers = model.add_subparsers(dest="model_command", required=True)
+    model_fit = model_subparsers.add_parser(
+        "fit",
+        help="Estimate whether a model size likely fits local VRAM",
+        description="Estimate memory fit using simple heuristics, not benchmarks.",
+    )
+    model_fit.add_argument(
+        "--size",
+        type=_model_size,
+        default="7b",
+        help="Model size such as 7b, 14b, or 32b",
+    )
+    model_fit.add_argument(
+        "--quant",
+        choices=("q4", "q8"),
+        default="q4",
+        help="Quantization heuristic",
+    )
+    model_fit.add_argument(
+        "--vram",
+        type=_positive_float,
+        help="Override detected VRAM in GiB",
+    )
+    model_fit.add_argument(
+        "--runtime",
+        choices=("ollama", "vllm"),
+        help="Runtime overhead heuristic",
+    )
+
     report = subparsers.add_parser(
         "report",
         help="Generate a JSON or Markdown diagnostic report",
@@ -88,15 +154,89 @@ def _parser() -> argparse.ArgumentParser:
     report.add_argument("--output", help="Write the report to this file")
     _add_runtime_options(report)
 
+    profile = subparsers.add_parser(
+        "profile",
+        help="Generate a safe, redacted diagnostic profile",
+        description=(
+            "Create a shareable local AI environment profile with secrets, "
+            "endpoint credentials, query strings, and home paths redacted."
+        ),
+        epilog="Examples: inferdoctor profile --format markdown | inferdoctor profile --format json --output profile.json",
+    )
+    profile.add_argument(
+        "--format",
+        choices=("markdown", "json"),
+        default="markdown",
+        help="Profile output format",
+    )
+    profile.add_argument("--output", help="Write the profile to this file")
+    _add_runtime_options(profile)
+
     explain = subparsers.add_parser(
         "explain",
         help="Explain a common local AI failure",
         description="Show a short troubleshooting guide for a known InferDoctor topic.",
+        epilog="Example: inferdoctor explain openai-compatible-404",
     )
     explain.add_argument(
         "topic",
         choices=explain_topics(),
         help="Troubleshooting topic to explain",
+    )
+
+    recommend = subparsers.add_parser(
+        "recommend",
+        help="Recommend a local AI stack path",
+        description=(
+            "Suggest a runtime, model size class, and starter template using "
+            "lightweight hardware heuristics."
+        ),
+    )
+    recommend.add_argument(
+        "--goal",
+        choices=GOALS,
+        help="What you want to build",
+    )
+    recommend.add_argument(
+        "--preference",
+        choices=PREFERENCES,
+        default="easiest",
+        help="Optimize for easiest setup or performance",
+    )
+    recommend.add_argument(
+        "--hardware",
+        choices=("auto",),
+        default="auto",
+        help="Hardware source; currently auto only",
+    )
+    recommend.add_argument(
+        "--vram",
+        type=_positive_float,
+        help="Override detected VRAM in GiB",
+    )
+
+    init = subparsers.add_parser(
+        "init",
+        help="Get a guided local AI setup recommendation",
+        description=(
+            "Ask a few lightweight questions and recommend a runtime path, "
+            "template, and next commands. No installation is performed."
+        ),
+    )
+    init.add_argument(
+        "--goal",
+        choices=GOALS,
+        help="What you want to build",
+    )
+    init.add_argument(
+        "--preference",
+        choices=PREFERENCES,
+        help="Optimize for easiest setup, performance, CPU, or GPU",
+    )
+    init.add_argument(
+        "--runtime",
+        choices=RUNTIMES,
+        help="Local runtime you already have, if known",
     )
 
     capacity = subparsers.add_parser(
@@ -106,6 +246,7 @@ def _parser() -> argparse.ArgumentParser:
             "Estimate local AI hardware readiness with lightweight heuristics. "
             "No models are downloaded or run."
         ),
+        epilog="Examples: inferdoctor capacity --vram 24 --model-size 14b --quant q4 | inferdoctor capacity --gpu 'RTX 3090'",
     )
     capacity.add_argument(
         "--vram",
@@ -114,8 +255,130 @@ def _parser() -> argparse.ArgumentParser:
     )
     capacity.add_argument(
         "--gpu",
-        help="Optional GPU name to show with --vram",
+        help="GPU name to display or infer common VRAM from, for example 'RTX 3090'",
     )
+    capacity.add_argument(
+        "--model-size",
+        type=_model_size,
+        help="Optional model size heuristic, for example 7b, 14b, or 32b",
+    )
+    capacity.add_argument(
+        "--quant",
+        choices=("q4", "q8"),
+        default="q4",
+        help="Quantization heuristic to use with --model-size",
+    )
+    capacity.add_argument(
+        "--runtime",
+        choices=("ollama", "vllm"),
+        help="Runtime heuristic to apply",
+    )
+
+    stack = subparsers.add_parser(
+        "stack",
+        help="Plan a beginner-friendly local AI app stack",
+        description="Create a read-only plan for building a local AI app on this machine.",
+    )
+    stack_subparsers = stack.add_subparsers(dest="stack_command", required=True)
+    stack_plan = stack_subparsers.add_parser(
+        "plan",
+        help="Create a local AI app stack plan",
+        description=(
+            "Recommend a runtime path, model size class, starter template, required "
+            "components, and next commands. This command is advisory and read-only."
+        ),
+    )
+    stack_plan.add_argument("--goal", choices=GOALS, help="What you want to build")
+    stack_plan.add_argument(
+        "--preference",
+        choices=PREFERENCES,
+        default="easiest",
+        help="Optimize for easiest setup, performance, CPU, or GPU",
+    )
+    stack_plan.add_argument(
+        "--hardware",
+        choices=("auto",),
+        default="auto",
+        help="Hardware source; currently auto only",
+    )
+    stack_plan.add_argument("--vram", type=_positive_float, help="Override detected VRAM in GiB")
+
+    template = subparsers.add_parser(
+        "template",
+        help="Explore, create, and validate local AI starter templates",
+        description=(
+            "List, inspect, create, and validate local AI app templates. Template commands do not "
+            "download models or install runtimes."
+        ),
+        epilog="Beginner flow: inferdoctor template list | inferdoctor template create customer-service --output ./demo | inferdoctor template validate ./demo",
+    )
+    template_subparsers = template.add_subparsers(
+        dest="template_command", required=True
+    )
+    template_subparsers.add_parser(
+        "list",
+        help="List available starter templates",
+        description="Show beginner-friendly local AI app templates.",
+    )
+    template_show = template_subparsers.add_parser(
+        "show",
+        help="Show details for one starter template",
+        description="Explain what a template builds, what it needs, and how to start.",
+    )
+    template_show.add_argument(
+        "template",
+        choices=template_names(),
+        help="Template name to inspect",
+    )
+    template_create = template_subparsers.add_parser(
+        "create",
+        help="Create a lightweight starter project",
+        description=(
+            "Generate a local starter project. This writes files only to the "
+            "explicit --output directory and does not install dependencies."
+        ),
+    )
+    template_create.add_argument(
+        "template",
+        choices=template_names(),
+        help="Template name to generate",
+    )
+    template_create.add_argument(
+        "--output",
+        required=True,
+        help="Directory where the starter project should be written",
+    )
+    template_validate = template_subparsers.add_parser(
+        "validate",
+        help="Validate a generated starter project",
+        description=(
+            "Read a generated template directory and check required files, "
+            "endpoint configuration, and obvious secret-like values. No dependencies "
+            "are installed and no endpoints are called."
+        ),
+    )
+    template_validate.add_argument(
+        "path",
+        help="Generated template project directory to validate",
+    )
+
+    def add_scenario_parser(name: str):
+        scenario_parser = subparsers.add_parser(
+            name,
+            help="Show goal-oriented scenario readiness",
+            description="Summarize readiness for common local AI goals using existing checks.",
+            epilog="Examples: inferdoctor scenario | inferdoctor scenario openai-compatible-server",
+        )
+        scenario_parser.add_argument(
+            "target",
+            nargs="?",
+            choices=scenario_names(),
+            help="Scenario to show; omit to show all scenarios",
+        )
+        _add_runtime_options(scenario_parser)
+
+    add_scenario_parser("scenario")
+    add_scenario_parser("scenarios")
     return parser
 
 
@@ -168,9 +431,119 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "explain":
         print(render_explanation(args.topic))
         return 0
-    if args.command == "capacity":
-        print(render_capacity(vram_gib=args.vram, gpu_name=args.gpu))
+    if args.command == "recommend":
+        print(
+            render_recommendation(
+                recommend_stack(
+                    goal=args.goal,
+                    preference=args.preference,
+                    hardware=args.hardware,
+                    vram_gib=args.vram,
+                )
+            )
+        )
         return 0
+    if args.command == "init":
+        goal = args.goal
+        preference = args.preference
+        runtime = args.runtime
+        interactive = sys.stdin.isatty() and goal is None and preference is None and runtime is None
+        if interactive:
+            goal = input("What do you want to build? [chatbot/document-qa/customer-service/restaurant-ordering/local-api/not-sure]: ").strip() or None
+            preference = input("What do you prefer? [easiest/performance/cpu/gpu]: ").strip() or None
+            runtime = input("Existing runtime? [ollama/vllm/sglang/xinference/not-sure]: ").strip() or None
+        print(render_setup_plan(recommend_setup(goal, preference, runtime)))
+        return 0
+    if args.command == "model":
+        if args.model_command == "fit":
+            print(
+                render_model_fit(
+                    estimate_model_fit(
+                        size=args.size,
+                        quant=args.quant,
+                        runtime=args.runtime,
+                        vram_gib=args.vram,
+                    )
+                )
+            )
+            return 0
+    if args.command == "capacity":
+        print(
+            render_capacity(
+                vram_gib=args.vram,
+                gpu_name=args.gpu,
+                model_size_b=args.model_size,
+                quant=args.quant,
+                runtime=args.runtime,
+            )
+        )
+        return 0
+    if args.command == "stack":
+        if args.stack_command == "plan":
+            print(
+                render_stack_plan(
+                    build_stack_plan(
+                        goal=args.goal,
+                        preference=args.preference,
+                        hardware=args.hardware,
+                        vram_gib=args.vram,
+                    )
+                )
+            )
+            return 0
+    if args.command == "template":
+        try:
+            if args.template_command == "list":
+                print(render_template_list())
+            elif args.template_command == "show":
+                print(render_template_detail(args.template))
+            elif args.template_command == "create":
+                written = create_template_project(args.template, args.output)
+                print(render_template_create_summary(args.template, args.output, written))
+            elif args.template_command == "validate":
+                print(render_template_validation(validate_template_project(args.path)))
+        except (KeyError, OSError) as exc:
+            print("inferdoctor: {0}".format(exc), file=sys.stderr)
+            return 2
+        return 0
+
+    if args.command in ("scenario", "scenarios"):
+        results, _ = _results_for_target(
+            None,
+            getattr(args, "config", None),
+            getattr(args, "timeout", None),
+            None,
+        )
+        print(render_scenarios(evaluate_scenarios(results, args.target)))
+        return _exit_code(results)
+
+    if args.command == "profile":
+        results, config = _results_for_target(
+            None,
+            getattr(args, "config", None),
+            getattr(args, "timeout", None),
+            None,
+        )
+        rendered = (
+            render_profile_json(results, config)
+            if args.format == "json"
+            else render_profile_markdown(results, config)
+        )
+        if args.output:
+            try:
+                Path(args.output).write_text(rendered + "\n", encoding="utf-8")
+            except OSError as exc:
+                print(
+                    "inferdoctor: could not write profile to '{0}': {1}. "
+                    "Check that the parent directory exists and is writable.".format(
+                        args.output, exc
+                    ),
+                    file=sys.stderr,
+                )
+                return 2
+        else:
+            print(rendered)
+        return _exit_code(results)
 
     results, config = _results_for_target(
         getattr(args, "target", None),

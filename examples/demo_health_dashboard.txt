@@ -1,0 +1,29 @@
+InferDoctor - Local AI Stack Health Check
+=========================================================
+Overall Health: 82 / 100  (Mostly healthy)
+Stack Summary: 3 working | 2 needs attention | 3 optional/offline | 0 failed
+Doctor's read: Some components need attention. Start with the first fix below.
+PASS 100 | WARN 60 | FAIL 0 | SKIP 85  (heuristic)
+
+Component   Status   Summary
+----------- -------- --------------------------------------------------
+System      PASS     System information collected
+NVIDIA      PASS     1 NVIDIA GPU(s) detected
+CUDA        SKIP     CUDA compiler was not found
+Ollama      PASS     Ollama CLI and API are available
+vLLM        WARN     vLLM models route returned HTTP 404
+SGLang      SKIP     SGLang endpoint is not reachable
+Xinference  SKIP     Xinference endpoint is not reachable
+Dify        WARN     Dify responded with HTTP 502
+
+Top recommended fixes (most useful first):
+1. vLLM: vLLM models route returned HTTP 404
+   Likely cause: The service responded, but /v1/models was not found. The base URL may be missing or duplicating /v1.
+   Impact: Needs attention if your app depends on vLLM.
+   Try: inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
+   Config: endpoints.vllm: http://127.0.0.1:8000/v1
+2. Dify: Dify responded with HTTP 502
+   Likely cause: Dify is optional. If you run it locally, the service may be stopped or mapped to another port.
+   Impact: Needs attention if your app depends on Dify.
+   Try: inferdoctor check dify --endpoint http://127.0.0.1:5001
+   Config: endpoints.dify: http://127.0.0.1:5001

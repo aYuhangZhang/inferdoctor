@@ -16,8 +16,12 @@ DISPLAY_NAMES = {
     "ollama": "Ollama",
     "vllm": "vLLM",
     "sglang": "SGLang",
+    "llamacpp": "llama.cpp",
+    "lmstudio": "LM Studio",
     "xinference": "Xinference",
     "dify": "Dify",
+    "openwebui": "Open WebUI",
+    "docker": "Docker",
 }
 
 
