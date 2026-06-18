@@ -242,6 +242,22 @@ the runtime remains dependency-free. `--timeout` and `--endpoint` provide safe,
 temporary overrides without editing configuration.
 
 
+
+## Guided Init
+
+Use `inferdoctor init` when you know what you want to build but not which local
+AI stack to start with:
+
+```bash
+inferdoctor init
+inferdoctor init --goal customer-service --preference easiest
+inferdoctor init --goal document-qa --preference gpu
+```
+
+The command recommends a runtime path, template, diagnosis command, and template
+creation command. It does not install runtimes, download models, or modify
+system settings.
+
 ## Template Catalog
 
 InferDoctor is growing from diagnosis into guided local AI setup. Start by

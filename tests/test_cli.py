@@ -183,3 +183,26 @@ def test_template_create_writes_starter_project(results, tmp_path, capsys):
     assert (output_dir / "app.py").exists()
     assert (output_dir / "data" / "faq.md").exists()
     results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_init_command_recommends_customer_service(results, capsys):
+    exit_code = main(["init", "--goal", "customer-service", "--preference", "easiest"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "InferDoctor Guided Setup" in output
+    assert "Template: customer-service" in output
+    assert "Runtime: ollama" in output
+    results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_init_command_recommends_document_qa_gpu(results, capsys):
+    exit_code = main(["init", "--goal", "document-qa", "--preference", "gpu"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "Template: local-doc-qa" in output
+    assert "GPU-capable" in output
+    results.assert_not_called()

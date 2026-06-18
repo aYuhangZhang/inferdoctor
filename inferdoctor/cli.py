@@ -19,6 +19,7 @@ from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
+from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
 from inferdoctor.core.templates import (
     create_template_project,
     render_template_create_summary,
@@ -135,6 +136,30 @@ def _parser() -> argparse.ArgumentParser:
         "topic",
         choices=explain_topics(),
         help="Troubleshooting topic to explain",
+    )
+
+    init = subparsers.add_parser(
+        "init",
+        help="Get a guided local AI setup recommendation",
+        description=(
+            "Ask a few lightweight questions and recommend a runtime path, "
+            "template, and next commands. No installation is performed."
+        ),
+    )
+    init.add_argument(
+        "--goal",
+        choices=GOALS,
+        help="What you want to build",
+    )
+    init.add_argument(
+        "--preference",
+        choices=PREFERENCES,
+        help="Optimize for easiest setup, performance, CPU, or GPU",
+    )
+    init.add_argument(
+        "--runtime",
+        choices=RUNTIMES,
+        help="Local runtime you already have, if known",
     )
 
     capacity = subparsers.add_parser(
@@ -283,6 +308,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "explain":
         print(render_explanation(args.topic))
+        return 0
+    if args.command == "init":
+        goal = args.goal
+        preference = args.preference
+        runtime = args.runtime
+        interactive = sys.stdin.isatty() and goal is None and preference is None and runtime is None
+        if interactive:
+            goal = input("What do you want to build? [chatbot/document-qa/customer-service/restaurant-ordering/local-api/not-sure]: ").strip() or None
+            preference = input("What do you prefer? [easiest/performance/cpu/gpu]: ").strip() or None
+            runtime = input("Existing runtime? [ollama/vllm/sglang/xinference/not-sure]: ").strip() or None
+        print(render_setup_plan(recommend_setup(goal, preference, runtime)))
         return 0
     if args.command == "capacity":
         print(
