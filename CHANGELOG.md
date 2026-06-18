@@ -1,6 +1,25 @@
 # Changelog
 
-## Unreleased / v0.3.0
+## Unreleased / v0.4.0
+
+### Highlights
+
+- Beginner setup journeys polished across diagnosis, recommendation, stack planning, bootstrap dry-run, template creation, validation, and smoke testing.
+- Generated starter apps now make dry-run and config-check paths clearer before any live model endpoint is used.
+- `inferdoctor template smoke-test` support is emphasized in recommended next steps and generated project flow.
+- Golden demo outputs added for health check, capacity, recommendations, stack plan, bootstrap dry-run, template validation, template smoke-test, and model fit.
+- README first screen updated around the setup-assistant workflow.
+- v0.4.0 release notes drafted for a future public release.
+
+### Safety
+
+- No heavy AI runtime dependencies were added.
+- No model download or model execution commands were added.
+- Template smoke tests remain read-only and do not call endpoints.
+- Stack bootstrap remains dry-run guidance, not an installer.
+- Recommendations and model-fit estimates remain heuristics, not benchmarks.
+
+## v0.3.0
 
 ### Highlights
 
