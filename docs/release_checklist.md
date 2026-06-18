@@ -1,44 +1,50 @@
-# v0.2.0 Release Checklist
+# v0.3.0 Release Checklist
+
+This checklist is public-facing release preparation for InferDoctor v0.3.0. It should stay free of private workflow notes, transcripts, and internal planning artifacts.
 
 ## Product Experience
 
-- [x] `inferdoctor` shows the health dashboard without a subcommand.
-- [x] The dashboard includes all eight supported components.
-- [x] The heuristic score, stack summary, and status weights are visible and documented.
-- [x] Top fixes include likely cause, impact, next command, and config hint.
-- [x] Screenshot examples contain no private data.
-- [x] README first screen explains the value and one-command quick start.
+- [x] `inferdoctor` shows the local AI stack health dashboard without a subcommand.
+- [x] `inferdoctor recommend` explains a practical setup direction for common goals.
+- [x] `inferdoctor stack plan` gives beginner-friendly next actions.
+- [x] `inferdoctor template list` and `inferdoctor template show` explain available starter projects.
+- [x] `inferdoctor template create` generates customer service, restaurant ordering, and local document Q&A starters.
+- [x] `inferdoctor template validate` checks generated projects without running inference.
+- [x] `inferdoctor init` supports a guided setup path.
+- [x] `inferdoctor model fit` gives clearly labeled heuristic fit guidance.
 
-## Diagnostics
+## Safety
 
-- [x] vLLM uses the reusable OpenAI-compatible checker.
-- [x] SGLang is available as `inferdoctor check sglang`.
-- [x] Connection refusal, timeout, 401/403, 404, invalid JSON, and wrong response shape are covered.
-- [x] Xinference and Dify behavior remains backward compatible.
-- [x] CPU-only machines complete without errors.
-- [x] `inferdoctor explain <topic>` covers common local AI failures.
-- [x] `inferdoctor capacity` provides a lightweight heuristic preview without running models.
+- [x] No heavy AI runtime dependencies were added.
+- [x] No model download command was added.
+- [x] No model execution command was added.
+- [x] No automatic runtime installation was added.
+- [x] Diagnostics remain read-only by default.
+- [x] Template generation writes only to an explicit output directory.
+- [x] Recommendations and model-fit estimates are documented as heuristics, not benchmarks.
 
 ## Validation
 
-- [x] Run `python -m pip install -e ".[dev]"` in an isolated environment.
-- [x] Run `inferdoctor`.
-- [x] Run `inferdoctor check`.
-- [x] Run `inferdoctor check sglang`.
-- [x] Run `inferdoctor report --format markdown`.
-- [x] Run `inferdoctor explain openai-compatible-404`.
-- [x] Run `inferdoctor explain cuda-toolkit-missing`.
-- [x] Run `inferdoctor capacity`.
-- [x] Run `inferdoctor capacity --vram 24`.
-- [x] Run `pytest`.
-- [x] Run `git diff --check`.
-- [ ] Confirm GitHub Actions passes on final `dev` commit.
+- [x] CLI smoke test: `inferdoctor`.
+- [x] CLI help smoke test: key command groups render help cleanly.
+- [x] Generated template smoke test: create customer service, restaurant ordering, and local document Q&A starters.
+- [x] Template validation smoke test: validate generated starter projects.
+- [x] Wheel build smoke test: `python -m build`.
+- [x] Package metadata check: `twine check dist/*`.
+- [x] Clean wheel install smoke test in a temporary virtual environment.
+- [x] Unit tests: `pytest`.
+- [x] Documentation review for install wording, safety claims, and beginner flow.
+- [x] README install wording does not claim PyPI availability before publication.
+- [x] Public release notes draft exists for v0.3.0.
+- [x] Internal artifact scan is part of pre-commit/final validation.
 
-## Release
+## Release Preparation
 
-- [x] Confirm package and module versions are `0.2.0`.
-- [x] Review README badges, examples, positioning, and roadmap.
-- [x] Review the final `dev` commit before merging to `main`.
-- [ ] Open PR from `dev` to `main` for v0.2.0.
-- [ ] Create and push tag `v0.2.0` only after the release merge.
-- [ ] Publish release notes with supported checks and safety limitations.
+- [x] Confirm package and module versions are `0.3.0` on the release branch.
+- [ ] Confirm GitHub Actions passes on the final `dev` commit.
+- [ ] Review final diff before merging `dev` to `main`.
+- [ ] Merge `dev` to `main` only when v0.3.0 is approved for release.
+- [ ] Create and push tag `v0.3.0` only after the release merge.
+- [ ] Publish GitHub Release notes from `docs/releases/v0.3.0.md`.
+- [ ] Run PyPI readiness check before publishing.
+- [ ] Publish to PyPI only when credentials and release approval are explicitly available.
