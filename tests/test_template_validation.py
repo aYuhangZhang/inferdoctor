@@ -25,7 +25,7 @@ def test_validate_local_doc_qa_template_passes(tmp_path):
 
     assert report.status == "PASS"
     assert report.template_type == "local-doc-qa"
-    assert "python ingest.py && python query.py" in render_template_validation(report)
+    assert "python ingest.py --help && python query.py --help" in render_template_validation(report)
 
 
 def test_validate_missing_template_directory_fails(tmp_path):
@@ -53,3 +53,43 @@ def test_validate_warns_on_secret_like_values(tmp_path):
 
     assert report.status == "WARN"
     assert any(item.name == "secret scan" and item.status == "WARN" for item in report.items)
+
+
+def test_validate_missing_customer_sample_data_fails_but_keeps_type(tmp_path):
+    create_template_project("customer-service", str(tmp_path))
+    (tmp_path / "data" / "faq.md").unlink()
+
+    report = validate_template_project(str(tmp_path))
+    rendered = render_template_validation(report)
+
+    assert report.template_type == "customer-service"
+    assert report.status == "FAIL"
+    assert "Missing data/faq.md" in rendered
+    assert "python app.py --help" in rendered
+
+
+def test_validate_missing_env_example_and_endpoint_fails(tmp_path):
+    create_template_project("local-doc-qa", str(tmp_path))
+    (tmp_path / ".env.example").unlink()
+    (tmp_path / "config.yaml").write_text("model: local-model\n", encoding="utf-8")
+
+    report = validate_template_project(str(tmp_path))
+
+    assert report.status == "FAIL"
+    assert any(item.name == ".env.example" and item.status == "FAIL" for item in report.items)
+    assert any(item.name == "endpoint config" and item.status == "FAIL" for item in report.items)
+
+
+def test_validate_unknown_layout_reports_entrypoint_and_sample_data(tmp_path):
+    (tmp_path / "README.md").write_text("# My App\n", encoding="utf-8")
+    (tmp_path / "requirements.txt").write_text("", encoding="utf-8")
+    (tmp_path / "config.yaml").write_text("endpoint: http://127.0.0.1:8000/v1\n", encoding="utf-8")
+    (tmp_path / ".env.example").write_text("LOCAL_AI_BASE_URL=http://127.0.0.1:8000/v1\n", encoding="utf-8")
+
+    report = validate_template_project(str(tmp_path))
+    rendered = render_template_validation(report)
+
+    assert report.template_type == "unknown"
+    assert report.status == "FAIL"
+    assert "No app.py, query.py, or ingest.py found" in rendered
+    assert "inferdoctor template list" in rendered
