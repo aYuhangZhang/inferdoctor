@@ -293,6 +293,22 @@ fit, difficulty, planned generated files, and next command. Listing or showing a
 not install runtimes, download models, or create files. Creating a template
 writes only to the explicit `--output` directory.
 
+
+## Model Fit Advisor
+
+Use `inferdoctor model fit` when you want a direct memory-fit estimate for a
+model size, quantization, runtime, and VRAM value:
+
+```bash
+inferdoctor model fit --size 14b --quant q4 --vram 24
+inferdoctor model fit --size 32b --quant q4 --vram 24
+inferdoctor model fit --size 14b --quant q4 --runtime ollama
+```
+
+Model fit estimates are rough heuristics, not benchmarks. Context length, KV
+cache, runtime options, CPU offload, batch size, and model architecture can move
+real memory usage significantly.
+
 ## Capacity Preview
 
 Use `inferdoctor capacity` for a lightweight hardware readiness estimate:

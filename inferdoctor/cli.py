@@ -15,6 +15,7 @@ from inferdoctor.core.config import (
     normalize_endpoint,
 )
 from inferdoctor.core.explain import explain_topics, render_explanation
+from inferdoctor.core.model_fit import estimate_model_fit, render_model_fit
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
 from inferdoctor.core.recommendations import recommend_stack, render_recommendation
@@ -96,6 +97,40 @@ def _parser() -> argparse.ArgumentParser:
         help="Override the selected service endpoint for this check",
     )
     _add_runtime_options(check)
+
+    model = subparsers.add_parser(
+        "model",
+        help="Estimate local model fit",
+        description="Lightweight model sizing helpers. No models are downloaded or run.",
+    )
+    model_subparsers = model.add_subparsers(dest="model_command", required=True)
+    model_fit = model_subparsers.add_parser(
+        "fit",
+        help="Estimate whether a model size likely fits local VRAM",
+        description="Estimate memory fit using simple heuristics, not benchmarks.",
+    )
+    model_fit.add_argument(
+        "--size",
+        type=_model_size,
+        default="7b",
+        help="Model size such as 7b, 14b, or 32b",
+    )
+    model_fit.add_argument(
+        "--quant",
+        choices=("q4", "q8"),
+        default="q4",
+        help="Quantization heuristic",
+    )
+    model_fit.add_argument(
+        "--vram",
+        type=_positive_float,
+        help="Override detected VRAM in GiB",
+    )
+    model_fit.add_argument(
+        "--runtime",
+        choices=("ollama", "vllm"),
+        help="Runtime overhead heuristic",
+    )
 
     report = subparsers.add_parser(
         "report",
@@ -364,6 +399,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             runtime = input("Existing runtime? [ollama/vllm/sglang/xinference/not-sure]: ").strip() or None
         print(render_setup_plan(recommend_setup(goal, preference, runtime)))
         return 0
+    if args.command == "model":
+        if args.model_command == "fit":
+            print(
+                render_model_fit(
+                    estimate_model_fit(
+                        size=args.size,
+                        quant=args.quant,
+                        runtime=args.runtime,
+                        vram_gib=args.vram,
+                    )
+                )
+            )
+            return 0
     if args.command == "capacity":
         print(
             render_capacity(

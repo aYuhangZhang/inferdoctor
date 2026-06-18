@@ -229,3 +229,15 @@ def test_recommend_command_supports_easiest_document_qa(results, capsys):
     assert "Template: local-doc-qa" in output
     assert "Runtime: Ollama" in output
     results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_model_fit_command_uses_vram_override(results, capsys):
+    exit_code = main(["model", "fit", "--size", "14b", "--quant", "q4", "--vram", "24"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "InferDoctor Model Fit Advisor" in output
+    assert "Model size: 14B" in output
+    assert "Fit:" in output
+    results.assert_not_called()
