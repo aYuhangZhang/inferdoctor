@@ -6,19 +6,40 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](pyproject.toml)
 
-**Diagnose your local AI stack in one command.**
+**InferDoctor diagnoses your local AI stack and helps you start building local AI apps.**
 
-InferDoctor is a local AI stack doctor and setup assistant. It helps you find
-out why Ollama, vLLM, SGLang, Xinference, Dify, CUDA, or your GPU setup is not
-working, understand what your machine can realistically run, and get started
-with practical local AI templates.
+Diagnose your local AI stack in one command, then get a practical setup path.
+InferDoctor helps you find out why Ollama, vLLM, SGLang, Xinference, Dify,
+CUDA, OpenAI-compatible endpoints, or your GPU setup are not working, understand
+what your machine can realistically run, and create small local AI starter apps.
 
-It gives you a screenshot-friendly health summary, top fixes, troubleshooting
-explainers, and rough capacity guidance without installing or running AI
-runtimes by default.
+It is lightweight and read-only by default. It does not install AI runtimes,
+download models, run inference, or modify system settings unless a future
+explicit setup command says so.
+
+## Install
+
+PyPI publishing is not assumed here. Install from GitHub for now:
+
+```bash
+python -m pip install "git+https://github.com/anguoyang/inferdoctor.git@dev"
+```
+
+For local development:
+
+```bash
+git clone https://github.com/anguoyang/inferdoctor.git
+cd inferdoctor
+python -m pip install -e .
+```
+
+## Start Here
 
 ```bash
 inferdoctor
+inferdoctor recommend --goal customer-service
+inferdoctor template create customer-service --output ./customer-service-demo
+inferdoctor template validate ./customer-service-demo
 ```
 
 Model recommendation tools help you choose a model. InferDoctor helps you
@@ -62,6 +83,15 @@ More screenshot-friendly samples:
 - [`examples/demo_health_dashboard.txt`](examples/demo_health_dashboard.txt)
 - [`examples/demo_scenarios.txt`](examples/demo_scenarios.txt)
 - [`examples/demo_profile.md`](examples/demo_profile.md)
+
+Beginner setup docs and template examples:
+
+- [`docs/beginner_guide.md`](docs/beginner_guide.md)
+- [`docs/local_ai_stacks.md`](docs/local_ai_stacks.md)
+- [`docs/openai_compatible_endpoints.md`](docs/openai_compatible_endpoints.md)
+- [`docs/template_projects.md`](docs/template_projects.md)
+- [`docs/hardware_and_model_fit.md`](docs/hardware_and_model_fit.md)
+- [`examples/templates/`](examples/templates/)
 
 ## From Broken Stack to Working App
 
