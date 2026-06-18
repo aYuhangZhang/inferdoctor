@@ -16,6 +16,16 @@ class LocalAIStackPlan:
     warnings: List[str]
 
 
+@dataclass(frozen=True)
+class StackBootstrapPlan:
+    recommendation: StackRecommendation
+    project_path: str
+    commands: List[str]
+    safe_actions: List[str]
+    requires_approval: List[str]
+    will_not_do: List[str]
+
+
 def _required_components(goal: str, runtime: str) -> list[str]:
     components = ["Python 3.9+", "A local OpenAI-compatible model endpoint"]
     lowered = runtime.lower()
@@ -64,6 +74,7 @@ def build_stack_plan(
         "inferdoctor recommend --goal {0}".format(recommendation.goal),
         "inferdoctor template create {0} --output {1}".format(recommendation.template, template_dir),
         "inferdoctor template validate {0}".format(template_dir),
+        "inferdoctor template smoke-test {0}".format(template_dir),
         "inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1",
         "inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1",
     ]
@@ -111,4 +122,83 @@ def render_stack_plan(plan: LocalAIStackPlan) -> str:
     lines.extend("  {0}".format(command) for command in plan.commands)
     lines.extend(["", "Warnings and caveats:"])
     lines.extend("  - {0}".format(warning) for warning in plan.warnings)
+    return "\n".join(lines)
+
+
+def build_stack_bootstrap_plan(
+    goal: Optional[str] = None,
+    preference: Optional[str] = None,
+    hardware: str = "auto",
+    vram_gib: Optional[float] = None,
+    output_dir: Optional[str] = None,
+) -> StackBootstrapPlan:
+    recommendation = recommend_stack(
+        goal=goal,
+        preference=preference,
+        hardware=hardware,
+        vram_gib=vram_gib,
+    )
+    project_path = output_dir or "./{0}-demo".format(recommendation.template)
+    commands = [
+        "inferdoctor",
+        "inferdoctor recommend --goal {0}".format(recommendation.goal),
+        "inferdoctor template create {0} --output {1}".format(recommendation.template, project_path),
+        "inferdoctor template validate {0}".format(project_path),
+        "inferdoctor template smoke-test {0}".format(project_path),
+        "cd {0}".format(project_path),
+        "cp .env.example .env",
+        "python app.py --check-config" if recommendation.template in {"customer-service", "restaurant-ordering"} else "python query.py --check-config",
+    ]
+    safe_actions = [
+        "Show this plan without changing files.",
+        "Generate a starter project only when the user runs the template create command.",
+        "Validate files and run dry-run smoke commands without contacting endpoints.",
+    ]
+    requires_approval = [
+        "Installing any local AI runtime or Python dependency.",
+        "Starting Docker containers or background services.",
+        "Calling a live model endpoint with user data.",
+    ]
+    will_not_do = [
+        "Install Ollama, vLLM, SGLang, Xinference, CUDA, or GPU frameworks.",
+        "Download models.",
+        "Run model inference.",
+        "Modify system settings or start services.",
+    ]
+    return StackBootstrapPlan(
+        recommendation=recommendation,
+        project_path=project_path,
+        commands=commands,
+        safe_actions=safe_actions,
+        requires_approval=requires_approval,
+        will_not_do=will_not_do,
+    )
+
+
+def render_stack_bootstrap_plan(plan: StackBootstrapPlan) -> str:
+    rec = plan.recommendation
+    lines = [
+        "InferDoctor Stack Bootstrap Plan (Dry Run)",
+        "=" * 57,
+        "Goal: {0}".format(rec.goal),
+        "Preference: {0}".format(rec.preference),
+        "Recommended runtime: {0}".format(rec.runtime),
+        "Recommended template: {0}".format(rec.template),
+        "Generated project path: {0}".format(plan.project_path),
+        "Model size class: {0}".format(rec.model_size_class),
+        "",
+        "Commands that would be run by a careful beginner:",
+    ]
+    lines.extend("  {0}. {1}".format(index, command) for index, command in enumerate(plan.commands, start=1))
+    lines.extend(["", "What is safe in this dry run:"])
+    lines.extend("  - {0}".format(item) for item in plan.safe_actions)
+    lines.extend(["", "Requires explicit user approval:"])
+    lines.extend("  - {0}".format(item) for item in plan.requires_approval)
+    lines.extend(["", "InferDoctor will not do automatically:"])
+    lines.extend("  - {0}".format(item) for item in plan.will_not_do)
+    lines.extend([
+        "",
+        "Next command to actually create files:",
+        "  inferdoctor template create {0} --output {1}".format(rec.template, plan.project_path),
+    ])
     return "\n".join(lines)

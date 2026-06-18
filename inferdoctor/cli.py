@@ -22,7 +22,12 @@ from inferdoctor.core.recommendations import recommend_stack, render_recommendat
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
-from inferdoctor.core.stack_plan import build_stack_plan, render_stack_plan
+from inferdoctor.core.stack_plan import (
+    build_stack_bootstrap_plan,
+    build_stack_plan,
+    render_stack_bootstrap_plan,
+    render_stack_plan,
+)
 from inferdoctor.core.template_validation import (
     render_template_smoke_test,
     render_template_validation,
@@ -304,6 +309,35 @@ def _parser() -> argparse.ArgumentParser:
         help="Hardware source; currently auto only",
     )
     stack_plan.add_argument("--vram", type=_positive_float, help="Override detected VRAM in GiB")
+    stack_bootstrap = stack_subparsers.add_parser(
+        "bootstrap",
+        help="Show a dry-run bootstrap plan for a local AI app",
+        description=(
+            "Print the exact beginner commands for creating, validating, and smoke-testing "
+            "a local AI starter project. This is a plan, not an executor."
+        ),
+        epilog="Example: inferdoctor stack bootstrap --goal customer-service --dry-run",
+    )
+    stack_bootstrap.add_argument("--goal", choices=GOALS, help="What you want to build")
+    stack_bootstrap.add_argument(
+        "--preference",
+        choices=PREFERENCES,
+        default="easiest",
+        help="Optimize for easiest setup, performance, CPU, or GPU",
+    )
+    stack_bootstrap.add_argument(
+        "--hardware",
+        choices=("auto",),
+        default="auto",
+        help="Hardware source; currently auto only",
+    )
+    stack_bootstrap.add_argument("--vram", type=_positive_float, help="Override detected VRAM in GiB")
+    stack_bootstrap.add_argument("--output", help="Project path to show in the plan")
+    stack_bootstrap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Required safety flag; only print the plan and do not execute it",
+    )
 
     template = subparsers.add_parser(
         "template",
@@ -508,6 +542,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         preference=args.preference,
                         hardware=args.hardware,
                         vram_gib=args.vram,
+                    )
+                )
+            )
+            return 0
+        if args.stack_command == "bootstrap":
+            if not args.dry_run:
+                print("inferdoctor: stack bootstrap currently requires --dry-run; no commands were executed.", file=sys.stderr)
+                return 2
+            print(
+                render_stack_bootstrap_plan(
+                    build_stack_bootstrap_plan(
+                        goal=args.goal,
+                        preference=args.preference,
+                        hardware=args.hardware,
+                        vram_gib=args.vram,
+                        output_dir=args.output,
                     )
                 )
             )
