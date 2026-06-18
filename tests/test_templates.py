@@ -1,4 +1,6 @@
 import py_compile
+import subprocess
+import sys
 
 from inferdoctor.core.templates import (
     create_template_project,
@@ -39,7 +41,12 @@ def test_create_customer_service_template(tmp_path):
     assert "vLLM" in readme
     assert "SGLang" in readme
     assert "Xinference" in readme
+    assert "inferdoctor template validate ." in readme
     py_compile.compile(str(tmp_path / "app.py"), doraise=True)
+    help_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--help"], capture_output=True, text=True, check=True)
+    assert "--check-config" in help_result.stdout
+    check_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--check-config"], capture_output=True, text=True, check=True)
+    assert "No endpoint call was made" in check_result.stdout
 
 
 def test_create_restaurant_template(tmp_path):
@@ -56,6 +63,8 @@ def test_create_restaurant_template(tmp_path):
     assert "allergies" in policies
     assert "payment" in policies
     py_compile.compile(str(tmp_path / "app.py"), doraise=True)
+    help_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--help"], capture_output=True, text=True, check=True)
+    assert "--check-config" in help_result.stdout
 
 
 def test_create_local_doc_qa_template(tmp_path):
@@ -70,3 +79,7 @@ def test_create_local_doc_qa_template(tmp_path):
     assert "OpenAI-compatible endpoint" in (tmp_path / "docs" / "sample.md").read_text(encoding="utf-8")
     py_compile.compile(str(tmp_path / "ingest.py"), doraise=True)
     py_compile.compile(str(tmp_path / "query.py"), doraise=True)
+    ingest_help = subprocess.run([sys.executable, str(tmp_path / "ingest.py"), "--help"], capture_output=True, text=True, check=True)
+    query_help = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--help"], capture_output=True, text=True, check=True)
+    assert "Markdown files" in ingest_help.stdout
+    assert "keyword index" in query_help.stdout

@@ -250,6 +250,7 @@ ENDPOINT_EXAMPLES = [
 
 APP_CLIENT = r"""from __future__ import annotations
 
+import argparse
 import json
 import os
 from pathlib import Path
@@ -347,8 +348,27 @@ def ask_local_model(message: str) -> str:
         return "Endpoint response did not look like OpenAI chat completions JSON."
 
 
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Run a local OpenAI-compatible starter chat loop. No cloud API key is required by default."
+    )
+    parser.add_argument(
+        "--check-config",
+        action="store_true",
+        help="Print resolved endpoint/model settings and exit without calling the model",
+    )
+    return parser
+
+
 def main() -> None:
-    base_url, model, _timeout = load_settings()
+    args = build_parser().parse_args()
+    base_url, model, timeout = load_settings()
+    if args.check_config:
+        print("Endpoint: {0}".format(base_url))
+        print("Model: {0}".format(model))
+        print("Timeout: {0}s".format(timeout))
+        print("No endpoint call was made.")
+        return
     print("Local AI starter connected to {0} with model '{1}'.".format(base_url, model))
     print("Type 'exit' to quit. No cloud API key is required by default.")
     while True:
@@ -372,6 +392,10 @@ def _endpoint_examples_markdown() -> str:
     return "\n".join("- {0}: `{1}`".format(name, url) for name, url in ENDPOINT_EXAMPLES)
 
 
+def _help_command(command: str) -> str:
+    return "python query.py --help" if "query.py" in command else "python app.py --help"
+
+
 def _base_readme(title: str, purpose: str, command: str, extra: str = "") -> str:
     return """# {title}
 
@@ -387,6 +411,8 @@ python -m venv .venv
 . .venv/bin/activate
 python -m pip install -r requirements.txt
 cp .env.example .env
+inferdoctor template validate .
+{help_command}
 {command}
 ```
 
@@ -416,6 +442,14 @@ inferdoctor explain openai-compatible-connection-refused
 ```
 {extra}
 
+## Validate This Template
+
+```bash
+inferdoctor template validate .
+```
+
+Validation is read-only. It checks files, endpoint configuration, sample data, and obvious secret-like values.
+
 ## Troubleshooting
 
 See `troubleshooting.md` for common local endpoint problems and fixes.
@@ -427,6 +461,7 @@ The template sends prompts only to the endpoint you configure. Keep it pointed a
         title=title,
         purpose=purpose,
         command=command,
+        help_command=_help_command(command),
         endpoint_examples=_endpoint_examples_markdown(),
         extra=extra,
     )
@@ -649,13 +684,19 @@ def _local_doc_qa_files() -> dict[str, str]:
         ),
         "ingest.py": """from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 DOCS = Path("docs")
 INDEX = Path("index.txt")
 
 
+def build_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(description="Build a plain-text keyword index from Markdown files in docs/.")
+
+
 def main() -> None:
+    build_parser().parse_args()
     chunks = []
     for path in sorted(DOCS.glob("*.md")):
         text = path.read_text(encoding="utf-8")
@@ -669,6 +710,7 @@ if __name__ == "__main__":
 """,
         "query.py": """from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 INDEX = Path("index.txt")
@@ -684,12 +726,21 @@ def score(text: str, question: str) -> int:
     return sum(1 for term in terms if term in lowered)
 
 
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Search the local keyword index and print the most relevant Markdown chunks."
+    )
+    parser.add_argument("question", nargs="?", help="Question to search for; omit for interactive prompt")
+    return parser
+
+
 def main() -> None:
+    args = build_parser().parse_args()
     if not INDEX.exists():
         print("Run python ingest.py first.")
         return
     chunks = [chunk for chunk in INDEX.read_text(encoding="utf-8").split("\\n\\n---\\n\\n") if chunk.strip()]
-    question = input("question> ").strip()
+    question = args.question or input("question> ").strip()
     ranked = sorted(chunks, key=lambda chunk: score(chunk, question), reverse=True)
     print("\\nTop local context matches:\\n")
     for index, chunk in enumerate(ranked[:3], start=1):
@@ -762,8 +813,10 @@ def render_template_create_summary(name: str, output_dir: str, written: list[str
         "What to do next:",
         "  1. cd {0}".format(output_dir),
         "  2. cp .env.example .env",
-        "  3. Edit .env or config.yaml for your local endpoint.",
-        "  4. {0}".format(run_command),
+        "  3. Validate the generated project: inferdoctor template validate {0}".format(output_dir),
+        "  4. Edit .env or config.yaml for your local endpoint.",
+        "  5. Try the generated help command before running the app.",
+        "  6. {0}".format(run_command),
         "",
         "Endpoint examples:",
     ])
