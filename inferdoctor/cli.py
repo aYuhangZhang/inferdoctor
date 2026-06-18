@@ -22,6 +22,10 @@ from inferdoctor.core.recommendations import recommend_stack, render_recommendat
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
+from inferdoctor.core.template_validation import (
+    render_template_validation,
+    validate_template_project,
+)
 from inferdoctor.core.templates import (
     create_template_project,
     render_template_create_summary,
@@ -307,6 +311,19 @@ def _parser() -> argparse.ArgumentParser:
         required=True,
         help="Directory where the starter project should be written",
     )
+    template_validate = template_subparsers.add_parser(
+        "validate",
+        help="Validate a generated starter project",
+        description=(
+            "Read a generated template directory and check required files, "
+            "endpoint configuration, and obvious secret-like values. No dependencies "
+            "are installed and no endpoints are called."
+        ),
+    )
+    template_validate.add_argument(
+        "path",
+        help="Generated template project directory to validate",
+    )
 
     def add_scenario_parser(name: str):
         scenario_parser = subparsers.add_parser(
@@ -432,6 +449,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             elif args.template_command == "create":
                 written = create_template_project(args.template, args.output)
                 print(render_template_create_summary(args.template, args.output, written))
+            elif args.template_command == "validate":
+                print(render_template_validation(validate_template_project(args.path)))
         except (KeyError, OSError) as exc:
             print("inferdoctor: {0}".format(exc), file=sys.stderr)
             return 2

@@ -241,3 +241,19 @@ def test_model_fit_command_uses_vram_override(results, capsys):
     assert "Model size: 14B" in output
     assert "Fit:" in output
     results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_template_validate_does_not_run_checks(results, tmp_path, capsys):
+    output_dir = tmp_path / "customer-service-demo"
+    main(["template", "create", "customer-service", "--output", str(output_dir)])
+    capsys.readouterr()
+
+    exit_code = main(["template", "validate", str(output_dir)])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "InferDoctor Template Validation" in output
+    assert "Overall status: PASS" in output
+    assert "python app.py" in output
+    results.assert_not_called()
