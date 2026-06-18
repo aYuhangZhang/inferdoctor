@@ -243,6 +243,23 @@ temporary overrides without editing configuration.
 
 
 
+
+## Stack Recommendations
+
+Use `inferdoctor recommend` for a lightweight recommendation that connects your
+goal, preference, hardware, runtime path, model size class, and starter
+template:
+
+```bash
+inferdoctor recommend
+inferdoctor recommend --goal customer-service --vram 24
+inferdoctor recommend --goal document-qa --preference easiest
+inferdoctor recommend --goal local-api --preference performance --vram 24
+```
+
+Recommendations are heuristics, not benchmarks. InferDoctor does not rank
+specific model names, download models, or start runtimes for you.
+
 ## Guided Init
 
 Use `inferdoctor init` when you know what you want to build but not which local

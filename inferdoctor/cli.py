@@ -17,6 +17,7 @@ from inferdoctor.core.config import (
 from inferdoctor.core.explain import explain_topics, render_explanation
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
+from inferdoctor.core.recommendations import recommend_stack, render_recommendation
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
@@ -136,6 +137,37 @@ def _parser() -> argparse.ArgumentParser:
         "topic",
         choices=explain_topics(),
         help="Troubleshooting topic to explain",
+    )
+
+    recommend = subparsers.add_parser(
+        "recommend",
+        help="Recommend a local AI stack path",
+        description=(
+            "Suggest a runtime, model size class, and starter template using "
+            "lightweight hardware heuristics."
+        ),
+    )
+    recommend.add_argument(
+        "--goal",
+        choices=GOALS,
+        help="What you want to build",
+    )
+    recommend.add_argument(
+        "--preference",
+        choices=PREFERENCES,
+        default="easiest",
+        help="Optimize for easiest setup or performance",
+    )
+    recommend.add_argument(
+        "--hardware",
+        choices=("auto",),
+        default="auto",
+        help="Hardware source; currently auto only",
+    )
+    recommend.add_argument(
+        "--vram",
+        type=_positive_float,
+        help="Override detected VRAM in GiB",
     )
 
     init = subparsers.add_parser(
@@ -308,6 +340,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "explain":
         print(render_explanation(args.topic))
+        return 0
+    if args.command == "recommend":
+        print(
+            render_recommendation(
+                recommend_stack(
+                    goal=args.goal,
+                    preference=args.preference,
+                    hardware=args.hardware,
+                    vram_gib=args.vram,
+                )
+            )
+        )
         return 0
     if args.command == "init":
         goal = args.goal

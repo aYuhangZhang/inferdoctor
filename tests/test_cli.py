@@ -206,3 +206,26 @@ def test_init_command_recommends_document_qa_gpu(results, capsys):
     assert "Template: local-doc-qa" in output
     assert "GPU-capable" in output
     results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_recommend_command_uses_vram_override(results, capsys):
+    exit_code = main(["recommend", "--goal", "customer-service", "--vram", "24"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "InferDoctor Stack Recommendation" in output
+    assert "Template: customer-service" in output
+    assert "7B or 14B" in output
+    results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_recommend_command_supports_easiest_document_qa(results, capsys):
+    exit_code = main(["recommend", "--goal", "document-qa", "--preference", "easiest", "--vram", "8"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "Template: local-doc-qa" in output
+    assert "Runtime: Ollama" in output
+    results.assert_not_called()
