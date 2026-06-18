@@ -146,3 +146,25 @@ def test_capacity_command_accepts_request_options(results, capsys):
     assert "Requested estimate:" in output
     assert "RTX 3090" in output
     results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_template_list_does_not_run_checks(results, capsys):
+    exit_code = main(["template", "list"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "InferDoctor Local AI Templates" in output
+    assert "customer-service" in output
+    results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
+def test_template_show_does_not_run_checks(results, capsys):
+    exit_code = main(["template", "show", "restaurant-ordering"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "Restaurant Ordering Assistant" in output
+    assert "Required stack:" in output
+    results.assert_not_called()

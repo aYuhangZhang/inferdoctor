@@ -19,6 +19,11 @@ from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
+from inferdoctor.core.templates import (
+    render_template_detail,
+    render_template_list,
+    template_names,
+)
 from inferdoctor.reporters import render_dashboard, render_json, render_markdown
 
 
@@ -164,6 +169,33 @@ def _parser() -> argparse.ArgumentParser:
         help="Runtime heuristic to apply",
     )
 
+    template = subparsers.add_parser(
+        "template",
+        help="Explore local AI starter templates",
+        description=(
+            "List and inspect local AI app templates. Template commands do not "
+            "download models or install runtimes."
+        ),
+    )
+    template_subparsers = template.add_subparsers(
+        dest="template_command", required=True
+    )
+    template_subparsers.add_parser(
+        "list",
+        help="List available starter templates",
+        description="Show local AI app templates planned for InferDoctor.",
+    )
+    template_show = template_subparsers.add_parser(
+        "show",
+        help="Show details for one starter template",
+        description="Explain a template's goal, stack, hardware fit, and next command.",
+    )
+    template_show.add_argument(
+        "template",
+        choices=template_names(),
+        help="Template name to inspect",
+    )
+
     def add_scenario_parser(name: str):
         scenario_parser = subparsers.add_parser(
             name,
@@ -242,6 +274,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 runtime=args.runtime,
             )
         )
+        return 0
+    if args.command == "template":
+        try:
+            if args.template_command == "list":
+                print(render_template_list())
+            elif args.template_command == "show":
+                print(render_template_detail(args.template))
+        except KeyError as exc:
+            print("inferdoctor: {0}".format(exc), file=sys.stderr)
+            return 2
         return 0
 
     if args.command in ("scenario", "scenarios"):

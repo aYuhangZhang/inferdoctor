@@ -241,6 +241,22 @@ The built-in YAML reader intentionally supports this small mapping format so
 the runtime remains dependency-free. `--timeout` and `--endpoint` provide safe,
 temporary overrides without editing configuration.
 
+
+## Template Catalog
+
+InferDoctor is growing from diagnosis into guided local AI setup. Start by
+inspecting lightweight template metadata:
+
+```bash
+inferdoctor template list
+inferdoctor template show customer-service
+inferdoctor template show restaurant-ordering
+```
+
+The catalog describes the intended app, required stack, optional stack, hardware
+fit, difficulty, planned generated files, and next command. Listing or showing a
+template does not install runtimes, download models, or create files.
+
 ## Capacity Preview
 
 Use `inferdoctor capacity` for a lightweight hardware readiness estimate:
