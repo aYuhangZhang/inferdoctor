@@ -35,7 +35,10 @@ from inferdoctor.core.template_validation import (
     validate_template_project,
 )
 from inferdoctor.core.templates import (
+    compose_template_names,
+    create_compose_project,
     create_template_project,
+    render_compose_create_summary,
     render_template_create_summary,
     render_template_detail,
     render_template_list,
@@ -423,6 +426,26 @@ def _parser() -> argparse.ArgumentParser:
         help="Per-command timeout in seconds",
     )
 
+    template_compose = template_subparsers.add_parser(
+        "compose",
+        help="Generate optional Docker Compose files for a starter template",
+        description=(
+            "Generate Docker Compose starter files only. This does not pull images, "
+            "start containers, install runtimes, or call endpoints."
+        ),
+        epilog="Example: inferdoctor template compose customer-service --output ./compose-customer-service",
+    )
+    template_compose.add_argument(
+        "template",
+        choices=compose_template_names(),
+        help="Template name for Compose guidance",
+    )
+    template_compose.add_argument(
+        "--output",
+        required=True,
+        help="Directory where Compose starter files should be written",
+    )
+
     def add_scenario_parser(name: str):
         scenario_parser = subparsers.add_parser(
             name,
@@ -581,6 +604,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(render_template_validation(validate_template_project(args.path)))
             elif args.template_command == "smoke-test":
                 print(render_template_smoke_test(smoke_test_template_project(args.path, timeout=args.timeout)))
+            elif args.template_command == "compose":
+                written = create_compose_project(args.template, args.output)
+                print(render_compose_create_summary(args.template, args.output, written))
         except (KeyError, OSError) as exc:
             print("inferdoctor: {0}".format(exc), file=sys.stderr)
             return 2
