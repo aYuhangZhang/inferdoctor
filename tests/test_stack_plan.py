@@ -1,6 +1,8 @@
 from inferdoctor.core.stack_plan import (
     build_stack_bootstrap_plan,
+    create_stack_bootstrap_project,
     build_stack_plan,
+    render_stack_bootstrap_files,
     render_stack_bootstrap_plan,
     render_stack_plan,
 )
@@ -46,3 +48,17 @@ def test_stack_bootstrap_document_qa_dry_run():
     assert plan.recommendation.template == "local-doc-qa"
     assert "python query.py --dry-run" in rendered
     assert "python query.py --check-config" in rendered
+
+
+
+def test_stack_bootstrap_generates_files(tmp_path):
+    result = create_stack_bootstrap_project(goal="customer-service", preference="easiest", output_dir=str(tmp_path))
+    rendered = render_stack_bootstrap_files(result)
+
+    assert (tmp_path / "README.md").exists()
+    assert (tmp_path / "app.py").exists()
+    assert (tmp_path / "bootstrap_plan.md").exists()
+    assert (tmp_path / "next_steps.md").exists()
+    assert (tmp_path / "config_summary.yaml").exists()
+    assert "Stack Bootstrap Files Created" in rendered
+    assert "No dependencies were installed" in rendered

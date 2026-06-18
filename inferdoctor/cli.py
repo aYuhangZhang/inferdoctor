@@ -24,7 +24,9 @@ from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, sce
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
 from inferdoctor.core.stack_plan import (
     build_stack_bootstrap_plan,
+    create_stack_bootstrap_project,
     build_stack_plan,
+    render_stack_bootstrap_files,
     render_stack_bootstrap_plan,
     render_stack_plan,
 )
@@ -576,21 +578,34 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
             return 0
         if args.stack_command == "bootstrap":
-            if not args.dry_run:
-                print("inferdoctor: stack bootstrap currently requires --dry-run; no commands were executed.", file=sys.stderr)
-                return 2
-            print(
-                render_stack_bootstrap_plan(
-                    build_stack_bootstrap_plan(
-                        goal=args.goal,
-                        preference=args.preference,
-                        hardware=args.hardware,
-                        vram_gib=args.vram,
-                        output_dir=args.output,
+            if args.dry_run:
+                print(
+                    render_stack_bootstrap_plan(
+                        build_stack_bootstrap_plan(
+                            goal=args.goal,
+                            preference=args.preference,
+                            hardware=args.hardware,
+                            vram_gib=args.vram,
+                            output_dir=args.output,
+                        )
                     )
                 )
-            )
-            return 0
+                return 0
+            if args.output:
+                print(
+                    render_stack_bootstrap_files(
+                        create_stack_bootstrap_project(
+                            goal=args.goal,
+                            preference=args.preference,
+                            hardware=args.hardware,
+                            vram_gib=args.vram,
+                            output_dir=args.output,
+                        )
+                    )
+                )
+                return 0
+            print("inferdoctor: stack bootstrap requires --dry-run or --output; no commands were executed.", file=sys.stderr)
+            return 2
     if args.command == "template":
         try:
             if args.template_command == "list":
