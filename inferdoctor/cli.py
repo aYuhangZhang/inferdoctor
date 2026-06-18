@@ -20,6 +20,8 @@ from inferdoctor.core.profile import render_profile_json, render_profile_markdow
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.core.templates import (
+    create_template_project,
+    render_template_create_summary,
     render_template_detail,
     render_template_list,
     template_names,
@@ -195,6 +197,24 @@ def _parser() -> argparse.ArgumentParser:
         choices=template_names(),
         help="Template name to inspect",
     )
+    template_create = template_subparsers.add_parser(
+        "create",
+        help="Create a lightweight starter project",
+        description=(
+            "Generate a local starter project. This writes files only to the "
+            "explicit --output directory and does not install dependencies."
+        ),
+    )
+    template_create.add_argument(
+        "template",
+        choices=template_names(),
+        help="Template name to generate",
+    )
+    template_create.add_argument(
+        "--output",
+        required=True,
+        help="Directory where the starter project should be written",
+    )
 
     def add_scenario_parser(name: str):
         scenario_parser = subparsers.add_parser(
@@ -281,7 +301,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(render_template_list())
             elif args.template_command == "show":
                 print(render_template_detail(args.template))
-        except KeyError as exc:
+            elif args.template_command == "create":
+                written = create_template_project(args.template, args.output)
+                print(render_template_create_summary(args.template, args.output, written))
+        except (KeyError, OSError) as exc:
             print("inferdoctor: {0}".format(exc), file=sys.stderr)
             return 2
         return 0

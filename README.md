@@ -251,11 +251,14 @@ inspecting lightweight template metadata:
 inferdoctor template list
 inferdoctor template show customer-service
 inferdoctor template show restaurant-ordering
+inferdoctor template create customer-service --output ./customer-service-demo
+inferdoctor template create local-doc-qa --output ./local-doc-qa-demo
 ```
 
 The catalog describes the intended app, required stack, optional stack, hardware
-fit, difficulty, planned generated files, and next command. Listing or showing a
-template does not install runtimes, download models, or create files.
+fit, difficulty, planned generated files, and next command. Listing or showing a template does
+not install runtimes, download models, or create files. Creating a template
+writes only to the explicit `--output` directory.
 
 ## Capacity Preview
 
