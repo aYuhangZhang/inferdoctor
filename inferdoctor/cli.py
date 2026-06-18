@@ -24,7 +24,9 @@ from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, sce
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
 from inferdoctor.core.stack_plan import build_stack_plan, render_stack_plan
 from inferdoctor.core.template_validation import (
+    render_template_smoke_test,
     render_template_validation,
+    smoke_test_template_project,
     validate_template_project,
 )
 from inferdoctor.core.templates import (
@@ -361,6 +363,25 @@ def _parser() -> argparse.ArgumentParser:
         "path",
         help="Generated template project directory to validate",
     )
+    template_smoke = template_subparsers.add_parser(
+        "smoke-test",
+        help="Run safe dry-run checks for a generated starter project",
+        description=(
+            "Run only allowlisted help, dry-run, and config-check commands inside a generated "
+            "template directory. No dependencies are installed and no endpoints are called."
+        ),
+        epilog="Example: inferdoctor template smoke-test ./customer-service-demo",
+    )
+    template_smoke.add_argument(
+        "path",
+        help="Generated template project directory to smoke-test",
+    )
+    template_smoke.add_argument(
+        "--timeout",
+        type=_positive_float,
+        default=5.0,
+        help="Per-command timeout in seconds",
+    )
 
     def add_scenario_parser(name: str):
         scenario_parser = subparsers.add_parser(
@@ -502,6 +523,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(render_template_create_summary(args.template, args.output, written))
             elif args.template_command == "validate":
                 print(render_template_validation(validate_template_project(args.path)))
+            elif args.template_command == "smoke-test":
+                print(render_template_smoke_test(smoke_test_template_project(args.path, timeout=args.timeout)))
         except (KeyError, OSError) as exc:
             print("inferdoctor: {0}".format(exc), file=sys.stderr)
             return 2

@@ -1,5 +1,7 @@
 from inferdoctor.core.template_validation import (
+    render_template_smoke_test,
     render_template_validation,
+    smoke_test_template_project,
     validate_template_project,
 )
 from inferdoctor.core.templates import create_template_project
@@ -93,3 +95,48 @@ def test_validate_unknown_layout_reports_entrypoint_and_sample_data(tmp_path):
     assert report.status == "FAIL"
     assert "No app.py, query.py, or ingest.py found" in rendered
     assert "inferdoctor template list" in rendered
+
+
+def test_smoke_test_customer_service_template_passes(tmp_path):
+    create_template_project("customer-service", str(tmp_path))
+
+    report = smoke_test_template_project(str(tmp_path))
+    rendered = render_template_smoke_test(report)
+
+    assert report.status == "PASS"
+    assert report.template_type == "customer-service"
+    assert "InferDoctor Template Smoke Test" in rendered
+    assert "python app.py --dry-run" in rendered
+    assert "do not install dependencies" in rendered
+
+
+def test_smoke_test_local_doc_qa_template_passes(tmp_path):
+    create_template_project("local-doc-qa", str(tmp_path))
+
+    report = smoke_test_template_project(str(tmp_path))
+    rendered = render_template_smoke_test(report)
+
+    assert report.status == "PASS"
+    assert report.template_type == "local-doc-qa"
+    assert "python query.py --dry-run" in rendered
+    assert "python query.py --check-config" in rendered
+
+
+def test_smoke_test_missing_entrypoint_fails(tmp_path):
+    create_template_project("customer-service", str(tmp_path))
+    (tmp_path / "app.py").unlink()
+
+    report = smoke_test_template_project(str(tmp_path))
+    rendered = render_template_smoke_test(report)
+
+    assert report.status == "FAIL"
+    assert "Missing app.py" in rendered
+
+
+def test_smoke_test_unknown_template_fails(tmp_path):
+    (tmp_path / "README.md").write_text("# Unknown\n", encoding="utf-8")
+
+    report = smoke_test_template_project(str(tmp_path))
+
+    assert report.status == "FAIL"
+    assert report.template_type == "unknown"

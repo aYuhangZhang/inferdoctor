@@ -186,6 +186,22 @@ def test_template_create_writes_starter_project(results, tmp_path, capsys):
 
 
 @patch("inferdoctor.cli._results_for_target")
+def test_template_smoke_test_runs_safe_commands(results, tmp_path, capsys):
+    output_dir = tmp_path / "customer-service-demo"
+    main(["template", "create", "customer-service", "--output", str(output_dir)])
+    capsys.readouterr()
+
+    exit_code = main(["template", "smoke-test", str(output_dir)])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "InferDoctor Template Smoke Test" in output
+    assert "python app.py --dry-run" in output
+    assert "Overall status: PASS" in output
+    results.assert_not_called()
+
+
+@patch("inferdoctor.cli._results_for_target")
 def test_init_command_recommends_customer_service(results, capsys):
     exit_code = main(["init", "--goal", "customer-service", "--preference", "easiest"])
 
