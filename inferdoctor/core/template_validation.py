@@ -345,16 +345,27 @@ def render_template_validation(report: TemplateValidationReport) -> str:
     else:
         lines.append("  1. No fixes needed. Configure .env if you want to use a different local endpoint.")
     if report.template_type in {"customer-service", "restaurant-ordering"}:
-        next_command = "  python app.py --help"
+        next_commands = [
+            "python app.py --dry-run",
+            "python app.py --check-config",
+            "inferdoctor template smoke-test {0}".format(report.path),
+        ]
     elif report.template_type == "local-doc-qa":
-        next_command = "  python ingest.py --help && python query.py --help"
+        next_commands = [
+            "python ingest.py --help",
+            "python query.py --dry-run",
+            "python query.py --check-config",
+            "inferdoctor template smoke-test {0}".format(report.path),
+        ]
     else:
-        next_command = "  inferdoctor template list"
+        next_commands = ["inferdoctor template list"]
     lines.extend([
         "",
-        "Next command to try:",
+        "Next commands to try:",
         "  cd {0}".format(report.path),
-        next_command,
+    ])
+    lines.extend("  {0}".format(command) for command in next_commands)
+    lines.extend([
         "",
         "Supported layouts: customer-service, restaurant-ordering, local-doc-qa.",
         "This validation is read-only. It does not install dependencies, call endpoints, or run inference.",

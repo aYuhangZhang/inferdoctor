@@ -184,6 +184,11 @@ def render_recommendation(recommendation: StackRecommendation) -> str:
             if recommendation.template in {"customer-service", "restaurant-ordering", "local-doc-qa"}
             else "  inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1"
         ),
+        (
+            "  inferdoctor template smoke-test ./{0}-demo".format(recommendation.template)
+            if recommendation.template in {"customer-service", "restaurant-ordering", "local-doc-qa"}
+            else "  inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1"
+        ),
         "",
         "Memory caveats:",
         "  {0}".format(recommendation.caveats),

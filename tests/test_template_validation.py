@@ -27,7 +27,9 @@ def test_validate_local_doc_qa_template_passes(tmp_path):
 
     assert report.status == "PASS"
     assert report.template_type == "local-doc-qa"
-    assert "python ingest.py --help && python query.py --help" in render_template_validation(report)
+    rendered = render_template_validation(report)
+    assert "python query.py --dry-run" in rendered
+    assert "inferdoctor template smoke-test" in rendered
 
 
 def test_validate_missing_template_directory_fails(tmp_path):
@@ -67,7 +69,8 @@ def test_validate_missing_customer_sample_data_fails_but_keeps_type(tmp_path):
     assert report.template_type == "customer-service"
     assert report.status == "FAIL"
     assert "Missing data/faq.md" in rendered
-    assert "python app.py --help" in rendered
+    assert "python app.py --dry-run" in rendered
+    assert "inferdoctor template smoke-test" in rendered
 
 
 def test_validate_missing_env_example_and_endpoint_fails(tmp_path):

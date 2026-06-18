@@ -152,6 +152,7 @@ def build_stack_bootstrap_plan(
         "inferdoctor template smoke-test {0}".format(project_path),
         "cd {0}".format(project_path),
         "cp .env.example .env",
+        "python app.py --dry-run" if recommendation.template in {"customer-service", "restaurant-ordering"} else "python query.py --dry-run",
         "python app.py --check-config" if recommendation.template in {"customer-service", "restaurant-ordering"} else "python query.py --check-config",
     ]
     safe_actions = [

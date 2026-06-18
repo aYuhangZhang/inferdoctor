@@ -34,6 +34,7 @@ def test_stack_bootstrap_customer_service_dry_run():
     assert plan.recommendation.template == "customer-service"
     assert "InferDoctor Stack Bootstrap Plan (Dry Run)" in rendered
     assert "inferdoctor template smoke-test ./customer-service-demo" in rendered
+    assert "python app.py --dry-run" in rendered
     assert "InferDoctor will not do automatically" in rendered
     assert "Download models" in rendered
 
@@ -43,4 +44,5 @@ def test_stack_bootstrap_document_qa_dry_run():
     rendered = render_stack_bootstrap_plan(plan)
 
     assert plan.recommendation.template == "local-doc-qa"
+    assert "python query.py --dry-run" in rendered
     assert "python query.py --check-config" in rendered

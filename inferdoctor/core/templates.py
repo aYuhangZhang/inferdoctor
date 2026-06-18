@@ -907,7 +907,7 @@ def create_template_project(name: str, output_dir: str) -> list[str]:
 
 
 def render_template_create_summary(name: str, output_dir: str, written: list[str]) -> str:
-    run_command = "python app.py" if name in {"customer-service", "restaurant-ordering"} else "python ingest.py && python query.py"
+    run_command = "python app.py" if name in {"customer-service", "restaurant-ordering"} else "python ingest.py && python query.py \"What is an OpenAI-compatible endpoint?\""
     dry_run_command = "python app.py --dry-run" if name in {"customer-service", "restaurant-ordering"} else "python query.py --dry-run"
     check_config_command = "python app.py --check-config" if name in {"customer-service", "restaurant-ordering"} else "python query.py --check-config"
     lines = [
@@ -925,11 +925,12 @@ def render_template_create_summary(name: str, output_dir: str, written: list[str
         "  1. cd {0}".format(output_dir),
         "  2. cp .env.example .env",
         "  3. Validate the generated project: inferdoctor template validate {0}".format(output_dir),
-        "  4. Edit .env or config.yaml for your local endpoint.",
-        "  5. Try safe smoke commands before running the app:",
+        "  4. Smoke-test the project without calling a model: inferdoctor template smoke-test {0}".format(output_dir),
+        "  5. Edit .env or config.yaml for your local endpoint.",
+        "  6. Try safe generated commands before using a live endpoint:",
         "     {0}".format(dry_run_command),
         "     {0}".format(check_config_command),
-        "  6. {0}".format(run_command),
+        "  7. {0}".format(run_command),
         "",
         "Endpoint examples:",
     ])

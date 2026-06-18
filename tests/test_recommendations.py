@@ -8,6 +8,7 @@ def test_recommend_stack_for_customer_service_with_24gib_vram():
     assert recommendation.runtime == "Ollama"
     assert "14B" in recommendation.model_size_class
     assert any("customer service" in item for item in recommendation.use_case_guidance)
+    assert "inferdoctor template smoke-test ./customer-service-demo" in render_recommendation(recommendation)
 
 
 def test_recommend_stack_for_local_api_performance():
