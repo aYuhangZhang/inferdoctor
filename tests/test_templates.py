@@ -1,3 +1,5 @@
+import py_compile
+
 from inferdoctor.core.templates import (
     create_template_project,
     get_template,
@@ -48,3 +50,5 @@ def test_create_local_doc_qa_template(tmp_path):
     assert (tmp_path / "query.py").exists()
     assert "keyword" in (tmp_path / "config.yaml").read_text(encoding="utf-8")
     assert "Top local context matches" in (tmp_path / "query.py").read_text(encoding="utf-8")
+    py_compile.compile(str(tmp_path / "ingest.py"), doraise=True)
+    py_compile.compile(str(tmp_path / "query.py"), doraise=True)

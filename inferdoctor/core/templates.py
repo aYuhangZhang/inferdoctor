@@ -448,7 +448,7 @@ def _local_doc_qa_files() -> dict[str, str]:
             "A small document question-answering starter with keyword retrieval fallback.",
             "python ingest.py && python query.py",
         ),
-        "ingest.py": '''from __future__ import annotations
+        "ingest.py": r'''from __future__ import annotations
 
 from pathlib import Path
 
@@ -468,7 +468,7 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 ''',
-        "query.py": '''from __future__ import annotations
+        "query.py": r'''from __future__ import annotations
 
 from pathlib import Path
 
