@@ -120,6 +120,14 @@ def recommend_setup(goal: Optional[str], preference: Optional[str], runtime: Opt
     )
 
 
+def _display_runtime(value: str) -> str:
+    if value == "vllm":
+        return "vLLM"
+    if value == "sglang":
+        return "SGLang"
+    return value if " " in value else value.title()
+
+
 def render_setup_plan(plan: SetupPlan) -> str:
     lines = [
         "InferDoctor Guided Setup",
@@ -129,7 +137,7 @@ def render_setup_plan(plan: SetupPlan) -> str:
         "Existing runtime: {0}".format(plan.runtime),
         "",
         "Plain-English recommendation:",
-        "  Start with {0}.".format(plan.recommended_runtime),
+        "  Start with {0}.".format(_display_runtime(plan.recommended_runtime)),
         "  Use the {0} template.".format(plan.template),
         "  {0}".format(plan.reason),
         "",

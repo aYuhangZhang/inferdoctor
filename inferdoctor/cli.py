@@ -77,7 +77,10 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="inferdoctor",
         description="Diagnose your local AI stack and get practical next steps for local AI apps.",
-        epilog="Run 'inferdoctor' for an immediate health score and top fixes.",
+        epilog=(
+            "Start here: inferdoctor | inferdoctor recommend --goal customer-service | "
+            "inferdoctor template create customer-service --output ./customer-service-demo"
+        ),
     )
     parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command")
@@ -158,6 +161,7 @@ def _parser() -> argparse.ArgumentParser:
             "Create a shareable local AI environment profile with secrets, "
             "endpoint credentials, query strings, and home paths redacted."
         ),
+        epilog="Examples: inferdoctor profile --format markdown | inferdoctor profile --format json --output profile.json",
     )
     profile.add_argument(
         "--format",
@@ -172,6 +176,7 @@ def _parser() -> argparse.ArgumentParser:
         "explain",
         help="Explain a common local AI failure",
         description="Show a short troubleshooting guide for a known InferDoctor topic.",
+        epilog="Example: inferdoctor explain openai-compatible-404",
     )
     explain.add_argument(
         "topic",
@@ -241,6 +246,7 @@ def _parser() -> argparse.ArgumentParser:
             "Estimate local AI hardware readiness with lightweight heuristics. "
             "No models are downloaded or run."
         ),
+        epilog="Examples: inferdoctor capacity --vram 24 --model-size 14b --quant q4 | inferdoctor capacity --gpu 'RTX 3090'",
     )
     capacity.add_argument(
         "--vram",
@@ -299,11 +305,12 @@ def _parser() -> argparse.ArgumentParser:
 
     template = subparsers.add_parser(
         "template",
-        help="Explore and create local AI starter templates",
+        help="Explore, create, and validate local AI starter templates",
         description=(
-            "List, inspect, and create local AI app templates. Template commands do not "
+            "List, inspect, create, and validate local AI app templates. Template commands do not "
             "download models or install runtimes."
         ),
+        epilog="Beginner flow: inferdoctor template list | inferdoctor template create customer-service --output ./demo | inferdoctor template validate ./demo",
     )
     template_subparsers = template.add_subparsers(
         dest="template_command", required=True
@@ -360,6 +367,7 @@ def _parser() -> argparse.ArgumentParser:
             name,
             help="Show goal-oriented scenario readiness",
             description="Summarize readiness for common local AI goals using existing checks.",
+            epilog="Examples: inferdoctor scenario | inferdoctor scenario openai-compatible-server",
         )
         scenario_parser.add_argument(
             "target",

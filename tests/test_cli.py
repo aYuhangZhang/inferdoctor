@@ -193,7 +193,7 @@ def test_init_command_recommends_customer_service(results, capsys):
     output = capsys.readouterr().out
     assert "InferDoctor Guided Setup" in output
     assert "Use the customer-service template." in output
-    assert "Start with ollama." in output
+    assert "Start with Ollama." in output
     results.assert_not_called()
 
 
@@ -215,6 +215,8 @@ def test_recommend_command_uses_vram_override(results, capsys):
     assert exit_code == 0
     output = capsys.readouterr().out
     assert "InferDoctor Stack Recommendation" in output
+    assert "Hardware: provided VRAM override" in output
+    assert "inferdoctor capacity --vram 24" in output
     assert "Template: customer-service" in output
     assert "7B or 14B" in output
     results.assert_not_called()
@@ -269,3 +271,20 @@ def test_stack_plan_command_does_not_run_checks(results, capsys):
     assert "Starter template: customer-service" in output
     assert "inferdoctor template validate ./customer-service-demo" in output
     results.assert_not_called()
+
+
+def test_help_includes_beginner_workflow(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--help"])
+
+    assert exc.value.code == 0
+    assert "inferdoctor recommend --goal customer-service" in capsys.readouterr().out
+
+
+def test_template_help_mentions_validate(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["template", "--help"])
+
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    assert "template validate" in output

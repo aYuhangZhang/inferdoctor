@@ -84,7 +84,7 @@ def recommend_stack(
 ) -> StackRecommendation:
     setup = recommend_setup(goal, preference)
     resolved_vram = vram_gib
-    hardware_label = hardware
+    hardware_label = "provided VRAM override" if vram_gib is not None and hardware == "auto" else hardware
     if resolved_vram is None and hardware == "auto":
         detected = detect_hardware()
         resolved_vram = detected.vram_gib
@@ -116,6 +116,10 @@ def recommend_stack(
     )
 
 
+def _fmt_number(value: float) -> str:
+    return "{0:g}".format(value)
+
+
 def render_recommendation(recommendation: StackRecommendation) -> str:
     vram = "unknown" if recommendation.vram_gib is None else "{0:g} GiB".format(recommendation.vram_gib)
     lines = [
@@ -139,7 +143,7 @@ def render_recommendation(recommendation: StackRecommendation) -> str:
         "",
         "Next commands:",
         "  inferdoctor",
-        "  inferdoctor capacity --vram {0}".format(recommendation.vram_gib) if recommendation.vram_gib is not None else "  inferdoctor capacity",
+        "  inferdoctor capacity --vram {0}".format(_fmt_number(recommendation.vram_gib)) if recommendation.vram_gib is not None else "  inferdoctor capacity",
         (
             "  inferdoctor template create {0} --output ./{0}-demo".format(recommendation.template)
             if recommendation.template in {"customer-service", "restaurant-ordering", "local-doc-qa"}
