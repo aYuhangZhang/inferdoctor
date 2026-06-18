@@ -38,8 +38,10 @@ python -m pip install -e .
 ```bash
 inferdoctor
 inferdoctor recommend --goal customer-service
+inferdoctor stack bootstrap --goal customer-service --dry-run
 inferdoctor template create customer-service --output ./customer-service-demo
 inferdoctor template validate ./customer-service-demo
+inferdoctor template smoke-test ./customer-service-demo
 ```
 
 Model recommendation tools help you choose a model. InferDoctor helps you
@@ -97,7 +99,7 @@ Beginner setup docs and template examples:
 
 InferDoctor starts with diagnosis, then guides the next step. The project is
 evolving toward hardware-aware stack recommendations, app templates, generated
-configuration, and dry-run bootstrap scripts that help beginners move from a
+configuration, and dry-run bootstrap plans that help beginners move from a
 failing local setup to a small working local AI application.
 
 The default behavior remains lightweight and read-only. Setup guidance and

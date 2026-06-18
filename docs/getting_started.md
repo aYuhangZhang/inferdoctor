@@ -37,15 +37,18 @@ inferdoctor
 Pick a goal and get a practical recommendation:
 
 ```bash
+inferdoctor init --goal customer-service --preference easiest
 inferdoctor recommend --goal customer-service --preference easiest
 inferdoctor stack plan --goal customer-service
+inferdoctor stack bootstrap --goal customer-service --dry-run
 ```
 
-Create and validate a starter project:
+Create, validate, and smoke-test a starter project:
 
 ```bash
 inferdoctor template create customer-service --output ./customer-service-demo
 inferdoctor template validate ./customer-service-demo
+inferdoctor template smoke-test ./customer-service-demo
 ```
 
 Configure the generated project:
@@ -55,6 +58,7 @@ cd ./customer-service-demo
 cp .env.example .env
 # Edit .env or config.yaml to point at your local OpenAI-compatible endpoint.
 python app.py --help
+python app.py --dry-run
 python app.py --check-config
 ```
 
@@ -78,4 +82,4 @@ Most generated examples use a local OpenAI-compatible endpoint. Common base URLs
 
 ## Safe Defaults
 
-InferDoctor does not install runtimes, download models, run inference, or modify system settings by default. Template generation writes files only to the output directory you choose.
+InferDoctor does not install runtimes, download models, run inference, or modify system settings by default. Template generation writes files only to the output directory you choose. Smoke tests only run safe help, dry-run, and config-check commands.

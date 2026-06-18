@@ -29,6 +29,7 @@ Use model fit before spending time configuring a runtime:
 ```bash
 inferdoctor model fit --size 14b --quant q4 --vram 24
 inferdoctor capacity --vram 24 --model-size 14b --quant q4
+inferdoctor stack plan --goal customer-service --vram 24
 ```
 
 If the result is `MAYBE`, reduce context length, use a smaller quantization footprint, try CPU offload, or choose a smaller model size class.

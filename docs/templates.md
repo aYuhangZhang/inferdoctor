@@ -19,23 +19,25 @@ inferdoctor template create local-doc-qa --output ./local-doc-qa-demo
 
 Template creation writes files only to the explicit `--output` directory. It does not install packages, download models, or contact remote services.
 
-## Validate a Starter
+## Validate and Smoke-Test a Starter
 
 After generating a project, run:
 
 ```bash
 inferdoctor template validate ./customer-service-demo
+inferdoctor template smoke-test ./customer-service-demo
 ```
 
-Validation checks for the expected README, config, `.env.example`, sample data, endpoint settings, entrypoint files, and obvious secret-looking values. It does not call a model endpoint or run inference.
+Validation checks for the expected README, config, `.env.example`, sample data, endpoint settings, entrypoint files, and obvious secret-looking values. Smoke tests run only allowlisted help, dry-run, and config-check commands inside the template directory. They do not install dependencies, call model endpoints, start services, or run inference.
 
 ## Generated Self-Checks
 
-Generated templates include lightweight help or config checks that do not require a live model:
+Generated templates include lightweight help, dry-run, and config checks that do not require a live model:
 
 ```bash
 cd ./customer-service-demo
 python app.py --help
+python app.py --dry-run
 python app.py --check-config
 ```
 
@@ -45,6 +47,8 @@ For document Q&A templates:
 cd ./local-doc-qa-demo
 python ingest.py --help
 python query.py --help
+python query.py --dry-run
+python query.py --check-config
 ```
 
 ## Current Creatable Templates

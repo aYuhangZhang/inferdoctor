@@ -86,7 +86,7 @@ def _parser() -> argparse.ArgumentParser:
         description="Diagnose your local AI stack and get practical next steps for local AI apps.",
         epilog=(
             "Start here: inferdoctor | inferdoctor recommend --goal customer-service | "
-            "inferdoctor template create customer-service --output ./customer-service-demo"
+            "inferdoctor template create customer-service --output ./customer-service-demo | inferdoctor template smoke-test ./customer-service-demo"
         ),
     )
     parser.add_argument("--version", action="version", version=__version__)
@@ -123,6 +123,7 @@ def _parser() -> argparse.ArgumentParser:
         "fit",
         help="Estimate whether a model size likely fits local VRAM",
         description="Estimate memory fit using simple heuristics, not benchmarks.",
+        epilog="Examples: inferdoctor model fit --size 14b --quant q4 --vram 24 | inferdoctor model fit --size 32b --quant q4 --runtime vllm",
     )
     model_fit.add_argument(
         "--size",
@@ -198,6 +199,7 @@ def _parser() -> argparse.ArgumentParser:
             "Suggest a runtime, model size class, and starter template using "
             "lightweight hardware heuristics."
         ),
+        epilog="Examples: inferdoctor recommend --goal customer-service --vram 24 | inferdoctor recommend --goal document-qa --preference easiest",
     )
     recommend.add_argument(
         "--goal",
@@ -229,6 +231,7 @@ def _parser() -> argparse.ArgumentParser:
             "Ask a few lightweight questions and recommend a runtime path, "
             "template, and next commands. No installation is performed."
         ),
+        epilog="Examples: inferdoctor init --goal customer-service --preference easiest | inferdoctor init --goal document-qa --preference gpu",
     )
     init.add_argument(
         "--goal",
@@ -294,6 +297,7 @@ def _parser() -> argparse.ArgumentParser:
             "Recommend a runtime path, model size class, starter template, required "
             "components, and next commands. This command is advisory and read-only."
         ),
+        epilog="Examples: inferdoctor stack plan --goal customer-service --vram 24 | inferdoctor stack plan --goal restaurant-ordering --preference easiest",
     )
     stack_plan.add_argument("--goal", choices=GOALS, help="What you want to build")
     stack_plan.add_argument(
@@ -346,7 +350,7 @@ def _parser() -> argparse.ArgumentParser:
             "List, inspect, create, and validate local AI app templates. Template commands do not "
             "download models or install runtimes."
         ),
-        epilog="Beginner flow: inferdoctor template list | inferdoctor template create customer-service --output ./demo | inferdoctor template validate ./demo",
+        epilog="Beginner flow: inferdoctor template list | inferdoctor template create customer-service --output ./demo | inferdoctor template validate ./demo | inferdoctor template smoke-test ./demo",
     )
     template_subparsers = template.add_subparsers(
         dest="template_command", required=True
@@ -373,6 +377,7 @@ def _parser() -> argparse.ArgumentParser:
             "Generate a local starter project. This writes files only to the "
             "explicit --output directory and does not install dependencies."
         ),
+        epilog="Examples: inferdoctor template create customer-service --output ./customer-service-demo | inferdoctor template create local-doc-qa --output ./docqa-demo",
     )
     template_create.add_argument(
         "template",
@@ -392,6 +397,7 @@ def _parser() -> argparse.ArgumentParser:
             "endpoint configuration, and obvious secret-like values. No dependencies "
             "are installed and no endpoints are called."
         ),
+        epilog="Examples: inferdoctor template validate ./customer-service-demo | inferdoctor template smoke-test ./customer-service-demo",
     )
     template_validate.add_argument(
         "path",
