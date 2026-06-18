@@ -1,0 +1,47 @@
+InferDoctor Local AI Stack Plan
+=========================================================
+Goal: customer-service
+Preference: easiest
+Hardware: provided VRAM override
+VRAM: 24 GiB
+
+Recommended path:
+  Runtime: Ollama
+  Model size class: 7B or 14B quantized
+  Starter template: customer-service
+  Why: The recommendation balances your goal, preference, and available VRAM.
+
+Use-case fit:
+  - LIKELY suitable for personal chatbot, customer service chatbot, document Q&A, restaurant ordering assistant, and a local OpenAI-compatible API.
+  - Template suggestion: customer-service with validate and smoke-test before calling a live endpoint.
+
+Required components:
+  - Python 3.9+
+  - A local OpenAI-compatible model endpoint
+  - Ollama or another simple local runtime
+
+Optional components:
+  - Open WebUI for browser chat
+  - Docker if your preferred runtime uses containers
+  - vLLM later for higher throughput
+  - SGLang later for OpenAI-compatible serving experiments
+
+Step-by-step next actions:
+  1. Run the health check first so endpoint and GPU problems are visible early.
+  2. Create the starter project for your goal.
+  3. Validate the generated files before editing them.
+  4. Configure LOCAL_AI_BASE_URL and LOCAL_AI_MODEL in .env or config.yaml.
+  5. Run the generated app and keep InferDoctor nearby for endpoint troubleshooting.
+
+Commands to run:
+  inferdoctor
+  inferdoctor recommend --goal customer-service
+  inferdoctor template create customer-service --output ./customer-service-demo
+  inferdoctor template validate ./customer-service-demo
+  inferdoctor template smoke-test ./customer-service-demo
+  inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
+  inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
+
+Warnings and caveats:
+  - This is a heuristic setup plan, not a benchmark or hardware guarantee.
+  - InferDoctor does not install runtimes, download models, run inference, or modify system settings by default.

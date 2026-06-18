@@ -85,6 +85,7 @@ More screenshot-friendly samples:
 - [`examples/demo_health_dashboard.txt`](examples/demo_health_dashboard.txt)
 - [`examples/demo_scenarios.txt`](examples/demo_scenarios.txt)
 - [`examples/demo_profile.md`](examples/demo_profile.md)
+- [`examples/demo_outputs/`](examples/demo_outputs/) - v0.4 health, capacity, recommendation, stack plan, bootstrap, validation, smoke-test, and model-fit demos
 
 Beginner setup docs and template examples:
 

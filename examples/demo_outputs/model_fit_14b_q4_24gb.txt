@@ -1,0 +1,33 @@
+InferDoctor Model Fit Advisor
+=========================================================
+Heuristic estimate only. This is not a benchmark.
+
+Request:
+  Model size: 14B
+  Quantization: Q4
+  Runtime: generic
+  VRAM: 24 GiB
+
+Estimate:
+  Estimated memory: 11.1 GiB
+  Fit: LIKELY OK
+  Why: Available VRAM is several GiB above the simple memory estimate.
+
+Runtime guidance:
+  Easiest path: Try Ollama or LM Studio first with a quantized model size class that fits this estimate.
+  Performance path: Use vLLM or SGLang only after endpoint and VRAM checks pass; tune context and concurrency carefully.
+
+Use-case guidance:
+  - Likely suitable for customer service chatbot, document Q&A, and local OpenAI-compatible API demos when endpoint checks pass.
+  - Maybe suitable for small team RAG depending on context length and embedding workload.
+
+Memory caveats:
+  There appears to be memory headroom, but context length and runtime settings still matter.
+
+What InferDoctor does not know yet:
+  This estimate does not know exact model architecture, context length, KV cache size, batch size, or runtime flags.
+
+Next commands:
+  inferdoctor capacity --model-size 14b --quant q4
+  inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
+  inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1

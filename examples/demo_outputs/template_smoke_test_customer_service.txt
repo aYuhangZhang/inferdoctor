@@ -1,0 +1,23 @@
+InferDoctor Template Smoke Test
+=========================================================
+Path: ./customer-service-demo
+Detected template: customer-service
+Overall status: PASS
+
+Safe commands:
+  app help         PASS Command completed without contacting an endpoint.
+    Command: python app.py --help
+  app dry-run      PASS Command completed without contacting an endpoint.
+    Command: python app.py --dry-run
+  app config       PASS Command completed without contacting an endpoint.
+    Command: python app.py --check-config
+
+Top fixes:
+  1. No smoke-test fixes needed. Configure .env when you are ready to use a live endpoint.
+
+Next steps:
+  1. Run inferdoctor template validate ./customer-service-demo
+  2. Edit .env or config.yaml for your local endpoint.
+  3. Run the generated app when your endpoint is ready.
+
+Smoke tests are read-only. They do not install dependencies, start services, call endpoints, or run model inference.
