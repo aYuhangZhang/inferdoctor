@@ -19,4 +19,10 @@ InferDoctor gives:
 
 It is read-only by default and does not install runtimes, download models, run inference, or modify system settings.
 
+Install:
+
+```bash
+pip install inferdoctor
+```
+
 GitHub: https://github.com/anguoyang/inferdoctor

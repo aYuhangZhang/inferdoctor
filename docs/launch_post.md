@@ -30,4 +30,6 @@ system settings. It is read-only by default and safe on CPU-only machines.
 Model recommendation tools help you choose a model. InferDoctor helps you find
 why the stack that should run the model is broken.
 
+Install: `pip install inferdoctor`
+
 Repository: https://github.com/anguoyang/inferdoctor

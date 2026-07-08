@@ -32,4 +32,6 @@ hardware, modify system settings, or choose a model for you. Model recommendatio
 tools help you choose a model. InferDoctor helps you understand why the stack
 that should run it is broken.
 
+Install: `pip install inferdoctor`
+
 Repository: https://github.com/anguoyang/inferdoctor
