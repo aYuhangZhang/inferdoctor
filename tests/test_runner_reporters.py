@@ -51,3 +51,33 @@ def test_verbose_reporters_include_raw_data():
 
     assert '"timeout": 2.0' in render_console([result], verbose=True)
     assert "**Raw data**" in render_markdown([result], verbose=True)
+
+
+def test_console_translations_zh():
+    result = CheckResult(
+        name="sample",
+        status=Status.WARN,
+        summary="需要注意",
+        details=["详细信息"],
+        suggestions=["建议"],
+    )
+
+    console = render_console([result], language="zh")
+
+    assert "医生诊断" not in console  # console only renders result lines
+    assert "建议：建议" in console
+
+
+def test_console_translations_ja():
+    result = CheckResult(
+        name="sample",
+        status=Status.WARN,
+        summary="注意が必要です",
+        details=["詳細"],
+        suggestions=["提案"],
+    )
+
+    console = render_console([result], language="ja")
+
+    assert "suggestion:" in console
+    assert "提案" in console

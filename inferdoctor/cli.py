@@ -74,6 +74,12 @@ def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
         help="HTTP timeout in seconds; overrides the config value",
     )
     parser.add_argument(
+        "--language",
+        choices=("auto", "en", "zh", "ja"),
+        default="auto",
+        help="Output language; auto follows the system locale.",
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="Include raw diagnostic data in console or Markdown output",
@@ -88,6 +94,12 @@ def _parser() -> argparse.ArgumentParser:
             "Start here: inferdoctor | inferdoctor recommend --goal customer-service | "
             "inferdoctor template create customer-service --output ./customer-service-demo | inferdoctor template smoke-test ./customer-service-demo"
         ),
+    )
+    parser.add_argument(
+        "--language",
+        choices=("auto", "en", "zh", "ja"),
+        default="auto",
+        help="Output language; auto follows the system locale.",
     )
     parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command")
@@ -458,12 +470,15 @@ def _results_for_target(
     config_path: Optional[str],
     timeout: Optional[float] = None,
     endpoint: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> Tuple[List[CheckResult], Config]:
     registry = default_registry()
     checkers = [registry.get(target)] if target else registry.all()
     config = _load(config_path)
     if timeout is not None:
         config.timeout = timeout
+    if language is not None:
+        config.language = language
     if endpoint is not None:
         if target is None:
             raise SystemExit("inferdoctor: --endpoint requires a component name")
@@ -488,6 +503,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not arguments:
         arguments = ["check"]
     args = parser.parse_args(arguments)
+    if args.command is None:
+        args = parser.parse_args(["check"] + arguments)
 
     if args.command == "explain":
         print(render_explanation(args.topic))
@@ -592,6 +609,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             getattr(args, "config", None),
             getattr(args, "timeout", None),
             None,
+            getattr(args, "language", None),
         )
         print(render_scenarios(evaluate_scenarios(results, args.target)))
         return _exit_code(results)
@@ -602,6 +620,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             getattr(args, "config", None),
             getattr(args, "timeout", None),
             None,
+            getattr(args, "language", None),
         )
         rendered = (
             render_profile_json(results, config)
@@ -629,9 +648,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         getattr(args, "config", None),
         getattr(args, "timeout", None),
         getattr(args, "endpoint", None),
+        getattr(args, "language", None),
     )
     if args.command == "check":
-        print(render_dashboard(results, config, verbose=args.verbose))
+        print(render_dashboard(results, config, verbose=args.verbose, language=config.language))
         return _exit_code(results)
 
     rendered = (

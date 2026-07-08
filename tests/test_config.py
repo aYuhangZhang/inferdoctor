@@ -33,6 +33,7 @@ def test_load_simple_yaml_config(tmp_path):
     assert config.endpoints["openwebui"] == "http://openwebui.local:3000"
     assert config.endpoints["xinference"] == "http://127.0.0.1:9997"
     assert config.timeout == 3.5
+    assert config.language == "auto"
 
 
 def test_load_json_config(tmp_path):
@@ -43,6 +44,19 @@ def test_load_json_config(tmp_path):
     )
 
     assert load_config(str(path)).endpoints["dify"] == "http://dify.local"
+
+
+def test_load_config_language_setting(tmp_path):
+    path = tmp_path / "inferdoctor.yaml"
+    path.write_text(
+        "\n".join(["language: zh", "timeout: 1.5"]),
+        encoding="utf-8",
+    )
+
+    config = load_config(str(path))
+
+    assert config.language == "zh"
+    assert config.timeout == 1.5
 
 
 def test_unknown_endpoint_is_rejected(tmp_path):

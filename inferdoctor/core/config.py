@@ -39,6 +39,7 @@ class Config:
         default_factory=lambda: dict(DEFAULT_ENDPOINTS)
     )
     timeout: float = 2.0
+    language: str = "auto"  # "auto", "en", "zh", "ja"
 
 
 def _parse_scalar(value: str) -> str:
@@ -93,7 +94,7 @@ def _parse_simple_yaml(text: str) -> Dict[str, Any]:
 
 
 def _validate_config(data: Dict[str, Any]) -> Config:
-    unknown = set(data) - {"endpoints", "timeout"}
+    unknown = set(data) - {"endpoints", "timeout", "language"}
     if unknown:
         raise ConfigError(
             "Unknown config key(s): {0}".format(", ".join(sorted(unknown)))
@@ -118,7 +119,11 @@ def _validate_config(data: Dict[str, Any]) -> Config:
     if timeout <= 0:
         raise ConfigError("'timeout' must be greater than zero")
 
-    return Config(endpoints=endpoints, timeout=timeout)
+    language = data.get("language", "auto")
+    if not isinstance(language, str) or not language.strip():
+        raise ConfigError("'language' must be a non-empty string")
+
+    return Config(endpoints=endpoints, timeout=timeout, language=language.strip())
 
 
 def load_config(path: Optional[str] = None) -> Config:
