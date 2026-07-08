@@ -59,3 +59,9 @@
 - No model download or inference execution features were added.
 - Diagnostics remain lightweight and read-only by default.
 - Tests continue to use mocks and do not require GPU, CUDA, local runtimes, or internet access.
+
+
+## v0.4.1
+
+- Fix a terminal-width-sensitive local-doc-qa template help test before the first PyPI publish.
+
