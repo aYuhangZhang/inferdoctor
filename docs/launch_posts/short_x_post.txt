@@ -1,3 +1,5 @@
+Install InferDoctor from PyPI: pip install inferdoctor
+
 Local AI is powerful, but debugging Ollama, vLLM, SGLang, Dify, CUDA, Docker, and GPU issues is painful.
 
 InferDoctor gives a one-command local AI stack health check:

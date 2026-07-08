@@ -1,6 +1,26 @@
 # Changelog
 
-## Unreleased / v0.4.0
+## Unreleased
+
+- No unreleased changes.
+
+## v0.4.1
+
+### Highlights
+
+- First PyPI release of InferDoctor.
+- Published package name: `inferdoctor`.
+- Default install command is now `pip install inferdoctor`.
+- Verified the PyPI package in a clean environment with the health dashboard, template list, and stack plan commands.
+- Fixed a terminal-width-sensitive local-doc-qa template help test before publication.
+
+### Safety
+
+- No model downloads, runtime installation, or inference execution were added.
+- Diagnosis remains read-only by default.
+- Template validation and smoke tests remain safe local checks.
+
+## v0.4.0
 
 ### Highlights
 
@@ -60,8 +80,4 @@
 - Diagnostics remain lightweight and read-only by default.
 - Tests continue to use mocks and do not require GPU, CUDA, local runtimes, or internet access.
 
-
-## v0.4.1
-
-- Fix a terminal-width-sensitive local-doc-qa template help test before the first PyPI publish.
 

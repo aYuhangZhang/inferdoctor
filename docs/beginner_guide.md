@@ -2,6 +2,14 @@
 
 InferDoctor is for the moment when you have a machine, Python works, and you want to know what local AI setup is realistic.
 
+## Install
+
+```bash
+pip install inferdoctor
+```
+
+Then start with one command.
+
 ## What to Do First
 
 ```bash

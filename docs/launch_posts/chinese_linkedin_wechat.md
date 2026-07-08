@@ -34,4 +34,6 @@ InferDoctor 不安装 AI runtime，不下载模型，不运行推理，不修改
 
 模型推荐工具帮你选模型。InferDoctor 帮你搞清楚为什么本地推理栈坏了。
 
+Install: `pip install inferdoctor`
+
 Repository: https://github.com/anguoyang/inferdoctor

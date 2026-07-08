@@ -18,4 +18,6 @@ InferDoctor 是一个开源的 local AI stack doctor and setup assistant。
 
 它不会默认下载模型、运行推理、安装 runtime 或修改系统设置。它的目标是让你知道哪里坏了，以及下一步怎么走。
 
+安装：`pip install inferdoctor`
+
 GitHub: https://github.com/anguoyang/inferdoctor

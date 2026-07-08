@@ -18,4 +18,10 @@ It gives you:
 
 The goal is not to download models or run inference for you. The goal is to help you understand what is broken and what to do next.
 
+Install:
+
+```bash
+pip install inferdoctor
+```
+
 GitHub: https://github.com/anguoyang/inferdoctor

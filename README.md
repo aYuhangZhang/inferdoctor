@@ -25,7 +25,13 @@ download models, run inference, publish data, or modify system settings.
 
 ## Install
 
-PyPI publishing is not assumed here. Install from GitHub for now:
+InferDoctor is available on PyPI:
+
+```bash
+pip install inferdoctor
+```
+
+Alternative developer install from GitHub:
 
 ```bash
 python -m pip install "git+https://github.com/anguoyang/inferdoctor.git@dev"
@@ -36,16 +42,15 @@ For local development:
 ```bash
 git clone https://github.com/anguoyang/inferdoctor.git
 cd inferdoctor
-python -m pip install -e .
+python -m pip install -e ".[dev]"
 ```
 
-## Start Here
+## Quick Start
 
 ```bash
 inferdoctor
-inferdoctor recommend --goal customer-service
-inferdoctor stack plan --goal customer-service
-inferdoctor stack bootstrap --goal customer-service --dry-run
+inferdoctor template list
+inferdoctor stack plan --goal customer-service --vram 24
 inferdoctor template create customer-service --output ./customer-service-demo
 inferdoctor template validate ./customer-service-demo
 inferdoctor template smoke-test ./customer-service-demo
@@ -197,16 +202,16 @@ Example:
    Config: endpoints.sglang: http://127.0.0.1:30000/v1
 ```
 
-## Quick Start
+## Command Reference Quick Start
 
-InferDoctor requires Python 3.9 or newer.
+InferDoctor requires Python 3.9 or newer. Install the published package and run the health check:
 
 ```bash
-git clone https://github.com/anguoyang/inferdoctor.git
-cd inferdoctor
-python -m pip install -e .
+pip install inferdoctor
 inferdoctor
 ```
+
+For development from source, use the GitHub install path shown above.
 
 Check one component or override its endpoint:
 
