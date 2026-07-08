@@ -97,7 +97,8 @@ def test_create_local_doc_qa_template(tmp_path):
     py_compile.compile(str(tmp_path / "query.py"), doraise=True)
     ingest_help = subprocess.run([sys.executable, str(tmp_path / "ingest.py"), "--help"], capture_output=True, text=True, check=True)
     query_help = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--help"], capture_output=True, text=True, check=True)
-    assert "Markdown files" in ingest_help.stdout
+    ingest_help_text = " ".join(ingest_help.stdout.split())
+    assert "Markdown files" in ingest_help_text
     assert "keyword index" in query_help.stdout
     assert "--dry-run" in query_help.stdout
     assert "--check-config" in query_help.stdout
