@@ -82,7 +82,7 @@ def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--language",
         choices=("auto", "en", "zh", "ja"),
-        default="auto",
+        default=None,
         help="Output language; auto follows the system locale.",
     )
     parser.add_argument(
@@ -104,7 +104,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--language",
         choices=("auto", "en", "zh", "ja"),
-        default="auto",
+        default=None,
         help="Output language; auto follows the system locale.",
     )
     parser.add_argument("--version", action="version", version=__version__)
@@ -653,23 +653,43 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.command in ("scenario", "scenarios"):
-        results, _ = _results_for_target(
-            None,
-            getattr(args, "config", None),
-            getattr(args, "timeout", None),
-            None,
-            getattr(args, "language", None),
+        language = getattr(args, "language", None)
+        results, _ = (
+            _results_for_target(
+                None,
+                getattr(args, "config", None),
+                getattr(args, "timeout", None),
+                None,
+                language,
+            )
+            if language is not None
+            else _results_for_target(
+                None,
+                getattr(args, "config", None),
+                getattr(args, "timeout", None),
+                None,
+            )
         )
         print(render_scenarios(evaluate_scenarios(results, args.target)))
         return _exit_code(results)
 
     if args.command == "profile":
-        results, config = _results_for_target(
-            None,
-            getattr(args, "config", None),
-            getattr(args, "timeout", None),
-            None,
-            getattr(args, "language", None),
+        language = getattr(args, "language", None)
+        results, config = (
+            _results_for_target(
+                None,
+                getattr(args, "config", None),
+                getattr(args, "timeout", None),
+                None,
+                language,
+            )
+            if language is not None
+            else _results_for_target(
+                None,
+                getattr(args, "config", None),
+                getattr(args, "timeout", None),
+                None,
+            )
         )
         rendered = (
             render_profile_json(results, config)
@@ -692,12 +712,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(rendered)
         return _exit_code(results)
 
-    results, config = _results_for_target(
-        getattr(args, "target", None),
-        getattr(args, "config", None),
-        getattr(args, "timeout", None),
-        getattr(args, "endpoint", None),
-        getattr(args, "language", None),
+    language = getattr(args, "language", None)
+    results, config = (
+        _results_for_target(
+            getattr(args, "target", None),
+            getattr(args, "config", None),
+            getattr(args, "timeout", None),
+            getattr(args, "endpoint", None),
+            language,
+        )
+        if language is not None
+        else _results_for_target(
+            getattr(args, "target", None),
+            getattr(args, "config", None),
+            getattr(args, "timeout", None),
+            getattr(args, "endpoint", None),
+        )
     )
     if args.command == "check":
         print(render_dashboard(results, config, verbose=args.verbose, language=config.language))

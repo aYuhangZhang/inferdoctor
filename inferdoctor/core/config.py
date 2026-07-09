@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.parse import urlsplit
 
+from inferdoctor.i18n import normalize_language
+
 
 DEFAULT_ENDPOINTS = {
     "ollama": "http://127.0.0.1:11434",
@@ -123,7 +125,12 @@ def _validate_config(data: Dict[str, Any]) -> Config:
     if not isinstance(language, str) or not language.strip():
         raise ConfigError("'language' must be a non-empty string")
 
-    return Config(endpoints=endpoints, timeout=timeout, language=language.strip())
+    try:
+        normalized_language = normalize_language(language)
+    except ValueError as exc:
+        raise ConfigError("'language' must be one of: auto, en, zh, ja") from exc
+
+    return Config(endpoints=endpoints, timeout=timeout, language=normalized_language)
 
 
 def load_config(path: Optional[str] = None) -> Config:

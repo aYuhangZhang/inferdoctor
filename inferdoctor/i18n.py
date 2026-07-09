@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import locale
+import os
 from typing import Dict
 
 SUPPORTED_LANGUAGES = ("auto", "en", "zh", "ja")
@@ -82,33 +83,46 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 
 
 def detect_system_language() -> str:
-    loc, _ = locale.getdefaultlocale()
-    if not loc:
-        return "en"
-    if loc.startswith("zh"):
-        return "zh"
-    if loc.startswith("ja"):
-        return "ja"
+    candidates = []
+    locale_values = locale.getlocale()
+    if locale_values[0]:
+        candidates.append(locale_values[0])
+    env_locale = os.environ.get("LANG") or os.environ.get("LANGUAGE")
+    if env_locale:
+        candidates.append(env_locale)
+
+    for candidate in candidates:
+        normalized = candidate.split(".")[0].replace("-", "_").lower()
+        if normalized.startswith("zh"):
+            return "zh"
+        if normalized.startswith("ja"):
+            return "ja"
+        if normalized.startswith("en"):
+            return "en"
+
     return "en"
 
 
 def normalize_language(language: str) -> str:
-    language = language.lower()
-    if language == "auto":
-        return "auto"
-    if language.startswith("zh"):
+    normalized = (language or "").strip().lower()
+    if normalized in SUPPORTED_LANGUAGES:
+        return normalized
+    if normalized.startswith("zh"):
         return "zh"
-    if language.startswith("ja"):
+    if normalized.startswith("ja"):
         return "ja"
-    if language == "en":
+    if normalized.startswith("en"):
         return "en"
-    return "en"
+    raise ValueError("Unsupported language: {0}".format(language))
 
 
 def t(key: str, language: str = "auto", **kwargs: object) -> str:
     if language == "auto":
         language = detect_system_language()
-    language = normalize_language(language)
-    translation = TRANSLATIONS.get(language, TRANSLATIONS["en"]) 
+    try:
+        normalized_language = normalize_language(language)
+    except ValueError:
+        normalized_language = "en"
+    translation = TRANSLATIONS.get(normalized_language, TRANSLATIONS["en"])
     template = translation.get(key, TRANSLATIONS["en"].get(key, key))
     return template.format(**kwargs)

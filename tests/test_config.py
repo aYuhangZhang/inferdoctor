@@ -59,6 +59,14 @@ def test_load_config_language_setting(tmp_path):
     assert config.timeout == 1.5
 
 
+def test_unsupported_config_language_is_rejected(tmp_path):
+    path = tmp_path / "inferdoctor.yaml"
+    path.write_text("language: fr\n", encoding="utf-8")
+
+    with pytest.raises(ConfigError, match="language' must be one of"):
+        load_config(str(path))
+
+
 def test_unknown_endpoint_is_rejected(tmp_path):
     path = tmp_path / "inferdoctor.yaml"
     path.write_text("endpoints:\n  unknown: http://localhost\n", encoding="utf-8")
