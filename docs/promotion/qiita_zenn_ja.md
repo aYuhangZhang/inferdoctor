@@ -23,4 +23,6 @@ inferdoctor template smoke-test ./customer-service-demo
 
 デフォルトでは runtime のインストール、モデルダウンロード、推論実行、システム設定変更は行いません。
 
+インストール：`pip install inferdoctor`
+
 GitHub: https://github.com/anguoyang/inferdoctor

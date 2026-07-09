@@ -334,3 +334,35 @@ def test_stack_bootstrap_dry_run_outputs_plan(results, capsys):
     assert "inferdoctor template create customer-service" in output
     assert "will not do automatically" in output
     results.assert_not_called()
+
+
+
+def test_template_compose_command(tmp_path, capsys):
+    output = tmp_path / "compose"
+
+    exit_code = main(["template", "compose", "customer-service", "--output", str(output)])
+
+    assert exit_code == 0
+    assert "Docker Compose Files Created" in capsys.readouterr().out
+    assert (output / "docker-compose.yml").exists()
+    assert (output / ".env.example").exists()
+
+
+
+def test_stack_bootstrap_output_generates_files(tmp_path, capsys):
+    output = tmp_path / "bootstrap"
+
+    exit_code = main(["stack", "bootstrap", "--goal", "customer-service", "--output", str(output)])
+
+    assert exit_code == 0
+    assert "Stack Bootstrap Files Created" in capsys.readouterr().out
+    assert (output / "README.md").exists()
+    assert (output / "bootstrap_plan.md").exists()
+
+
+
+def test_template_registry_command(capsys):
+    exit_code = main(["template", "registry"])
+
+    assert exit_code == 0
+    assert "InferDoctor Template Registry" in capsys.readouterr().out

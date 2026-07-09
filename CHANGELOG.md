@@ -1,6 +1,39 @@
 # Changelog
 
-## Unreleased / v0.4.0
+## Unreleased / v0.5.0
+
+### Development Notes
+
+- Docker Compose starter file generation for selected templates.
+- Safe stack bootstrap file generation for starter projects and setup plans.
+- Improved Dify, Open WebUI, and Ollama + Open WebUI starter guidance.
+- Local template registry foundation with conservative safety rules.
+- Project readiness scoring for template validation and smoke tests.
+- More real-world template examples for Dify, Open WebUI, Compose, and bootstrap workflows.
+
+### Safety
+
+- Compose generation writes files only; it does not pull images or start containers.
+- Bootstrap generation writes starter files only; it does not install dependencies, call endpoints, or run inference.
+- Template registry support is local-only; no remote template execution is enabled.
+- Recommendations and readiness scores remain heuristics, not benchmarks.
+
+## v0.4.1
+
+### Highlights
+
+- First PyPI release of InferDoctor.
+- Published package name: `inferdoctor`.
+- Default install command is now `pip install inferdoctor`.
+- Verified the PyPI package in a clean environment with the health dashboard, template list, and stack plan commands.
+
+### Safety
+
+- No model downloads, runtime installation, or inference execution were added.
+- Diagnosis remains read-only by default.
+- Template validation and smoke tests remain safe local checks.
+
+## v0.4.0
 
 ### Highlights
 
@@ -59,3 +92,5 @@
 - No model download or inference execution features were added.
 - Diagnostics remain lightweight and read-only by default.
 - Tests continue to use mocks and do not require GPU, CUDA, local runtimes, or internet access.
+
+

@@ -30,6 +30,10 @@ class TemplateValidationReport:
             return "WARN"
         return "PASS"
 
+    @property
+    def readiness_score(self) -> int:
+        return _readiness_score([item.status for item in self.items])
+
 
 @dataclass(frozen=True)
 class TemplateSmokeItem:
@@ -54,6 +58,17 @@ class TemplateSmokeReport:
         if any(item.status == "WARN" for item in self.items):
             return "WARN"
         return "PASS"
+
+    @property
+    def readiness_score(self) -> int:
+        return _readiness_score([item.status for item in self.items])
+
+
+def _readiness_score(statuses: List[str]) -> int:
+    if not statuses:
+        return 0
+    weights = {"PASS": 100, "WARN": 65, "FAIL": 0}
+    return round(sum(weights.get(status, 50) for status in statuses) / len(statuses))
 
 
 def _read_text(path: Path) -> str:
@@ -299,6 +314,7 @@ def render_template_smoke_test(report: TemplateSmokeReport) -> str:
         "Path: {0}".format(report.path),
         "Detected template: {0}".format(report.template_type),
         "Overall status: {0}".format(report.status),
+        "Project Readiness: {0} / 100 (heuristic)".format(report.readiness_score),
         "",
         "Safe commands:",
     ]
@@ -332,6 +348,7 @@ def render_template_validation(report: TemplateValidationReport) -> str:
         "Path: {0}".format(report.path),
         "Detected template: {0}".format(report.template_type),
         "Overall status: {0}".format(report.status),
+        "Project Readiness: {0} / 100 (heuristic)".format(report.readiness_score),
         "",
         "Checks:",
     ]

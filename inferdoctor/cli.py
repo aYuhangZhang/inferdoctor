@@ -24,7 +24,9 @@ from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, sce
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
 from inferdoctor.core.stack_plan import (
     build_stack_bootstrap_plan,
+    create_stack_bootstrap_project,
     build_stack_plan,
+    render_stack_bootstrap_files,
     render_stack_bootstrap_plan,
     render_stack_plan,
 )
@@ -35,10 +37,14 @@ from inferdoctor.core.template_validation import (
     validate_template_project,
 )
 from inferdoctor.core.templates import (
+    compose_template_names,
+    create_compose_project,
     create_template_project,
+    render_compose_create_summary,
     render_template_create_summary,
     render_template_detail,
     render_template_list,
+    render_template_registry,
     template_names,
 )
 from inferdoctor.reporters import render_dashboard, render_json, render_markdown
@@ -372,6 +378,11 @@ def _parser() -> argparse.ArgumentParser:
         help="List available starter templates",
         description="Show beginner-friendly local AI app templates.",
     )
+    template_subparsers.add_parser(
+        "registry",
+        help="Show built-in template source and future registry safety rules",
+        description="Explain built-in templates and future community template registry principles.",
+    )
     template_show = template_subparsers.add_parser(
         "show",
         help="Show details for one starter template",
@@ -433,6 +444,26 @@ def _parser() -> argparse.ArgumentParser:
         type=_positive_float,
         default=5.0,
         help="Per-command timeout in seconds",
+    )
+
+    template_compose = template_subparsers.add_parser(
+        "compose",
+        help="Generate optional Docker Compose files for a starter template",
+        description=(
+            "Generate Docker Compose starter files only. This does not pull images, "
+            "start containers, install runtimes, or call endpoints."
+        ),
+        epilog="Example: inferdoctor template compose customer-service --output ./compose-customer-service",
+    )
+    template_compose.add_argument(
+        "template",
+        choices=compose_template_names(),
+        help="Template name for Compose guidance",
+    )
+    template_compose.add_argument(
+        "--output",
+        required=True,
+        help="Directory where Compose starter files should be written",
     )
 
     def add_scenario_parser(name: str):
@@ -570,25 +601,40 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
             return 0
         if args.stack_command == "bootstrap":
-            if not args.dry_run:
-                print("inferdoctor: stack bootstrap currently requires --dry-run; no commands were executed.", file=sys.stderr)
-                return 2
-            print(
-                render_stack_bootstrap_plan(
-                    build_stack_bootstrap_plan(
-                        goal=args.goal,
-                        preference=args.preference,
-                        hardware=args.hardware,
-                        vram_gib=args.vram,
-                        output_dir=args.output,
+            if args.dry_run:
+                print(
+                    render_stack_bootstrap_plan(
+                        build_stack_bootstrap_plan(
+                            goal=args.goal,
+                            preference=args.preference,
+                            hardware=args.hardware,
+                            vram_gib=args.vram,
+                            output_dir=args.output,
+                        )
                     )
                 )
-            )
-            return 0
+                return 0
+            if args.output:
+                print(
+                    render_stack_bootstrap_files(
+                        create_stack_bootstrap_project(
+                            goal=args.goal,
+                            preference=args.preference,
+                            hardware=args.hardware,
+                            vram_gib=args.vram,
+                            output_dir=args.output,
+                        )
+                    )
+                )
+                return 0
+            print("inferdoctor: stack bootstrap requires --dry-run or --output; no commands were executed.", file=sys.stderr)
+            return 2
     if args.command == "template":
         try:
             if args.template_command == "list":
                 print(render_template_list())
+            elif args.template_command == "registry":
+                print(render_template_registry())
             elif args.template_command == "show":
                 print(render_template_detail(args.template))
             elif args.template_command == "create":
@@ -598,6 +644,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(render_template_validation(validate_template_project(args.path)))
             elif args.template_command == "smoke-test":
                 print(render_template_smoke_test(smoke_test_template_project(args.path, timeout=args.timeout)))
+            elif args.template_command == "compose":
+                written = create_compose_project(args.template, args.output)
+                print(render_compose_create_summary(args.template, args.output, written))
         except (KeyError, OSError) as exc:
             print("inferdoctor: {0}".format(exc), file=sys.stderr)
             return 2

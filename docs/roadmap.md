@@ -26,19 +26,27 @@ Planned focus areas:
 - Better beginner UX for template creation, validation, and endpoint configuration.
 - More explicit safety messaging around what InferDoctor will not do automatically.
 
-## v0.5.0 Possibilities
+## v0.5.0 Focus
 
-v0.5.0 may explore optional setup assistance, while keeping destructive or heavy actions opt-in.
+v0.5.0 focuses on turning InferDoctor from a setup assistant into a practical local AI app starter while keeping heavy actions explicit and opt-in.
 
-Possible directions:
+Current development areas:
 
-- Optional safe bootstrap execution for file generation and lightweight checks.
+- Docker Compose generation for users who explicitly request starter files.
+- Safe bootstrap file generation for starter projects, setup plans, next steps, and config summaries.
+- Dify, Open WebUI, and Ollama + Open WebUI starter guidance.
+- Local template registry foundation before any remote/community template support.
+- Project readiness scoring for generated templates.
+- More real-world examples for Compose and bootstrap workflows.
+
+Future possibilities:
+
 - More templates for local AI applications.
-- Docker Compose generation for users who explicitly request it.
+- Optional safe bootstrap execution for lightweight checks only.
 - Dify workflow templates.
-- Open WebUI integration guide.
+- Open WebUI integration guide expansion.
 - Benchmark result import, not benchmark execution by default.
-- Community template registry.
+- Community template registry with validation-first safety rules.
 - Japanese enterprise RAG setup guide.
 
 ## Long-Term Direction

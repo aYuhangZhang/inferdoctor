@@ -14,8 +14,10 @@ It helps developers diagnose local AI setup problems and move toward a working s
 
 v0.3 is still lightweight and safe by default. It does not install runtimes, download models, run inference, or modify system settings.
 
-Install from GitHub until PyPI publishing is completed:
+Install the current published package from PyPI:
 
 ```bash
-python -m pip install "git+https://github.com/anguoyang/inferdoctor.git@v0.3.0"
+pip install inferdoctor
 ```
+
+For historical v0.3.0 source installs, use the GitHub tag.

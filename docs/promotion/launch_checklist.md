@@ -6,7 +6,7 @@
 - Confirm README install instructions match current publishing status.
 - Confirm CI is green.
 - Confirm screenshots or console examples contain no secrets, hostnames, private paths, or tokens.
-- Confirm PyPI is not mentioned as available unless it is actually published.
+- Confirm install snippets use `pip install inferdoctor` now that the package is published.
 
 ## Content Points
 

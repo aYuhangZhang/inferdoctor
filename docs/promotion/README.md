@@ -21,3 +21,9 @@ InferDoctor helps with:
 - dry-run setup plans
 
 Keep claims practical. Do not claim model downloads, runtime installation, production deployment automation, or benchmark accuracy.
+
+Default install command for public launch materials:
+
+```bash
+pip install inferdoctor
+```

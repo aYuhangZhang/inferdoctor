@@ -3,10 +3,14 @@ import subprocess
 import sys
 
 from inferdoctor.core.templates import (
+    compose_template_names,
+    create_compose_project,
     create_template_project,
+    render_compose_create_summary,
     get_template,
     render_template_detail,
     render_template_list,
+    render_template_registry,
 )
 
 
@@ -93,7 +97,8 @@ def test_create_local_doc_qa_template(tmp_path):
     py_compile.compile(str(tmp_path / "query.py"), doraise=True)
     ingest_help = subprocess.run([sys.executable, str(tmp_path / "ingest.py"), "--help"], capture_output=True, text=True, check=True)
     query_help = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--help"], capture_output=True, text=True, check=True)
-    assert "Markdown files" in ingest_help.stdout
+    ingest_help_text = " ".join(ingest_help.stdout.split())
+    assert "Markdown files" in ingest_help_text
     assert "keyword index" in query_help.stdout
     assert "--dry-run" in query_help.stdout
     assert "--check-config" in query_help.stdout
@@ -101,3 +106,36 @@ def test_create_local_doc_qa_template(tmp_path):
     assert "No endpoint call was made" in query_config.stdout
     query_dry_run = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--dry-run"], capture_output=True, text=True, check=True)
     assert "Dry run: no endpoint call was made" in query_dry_run.stdout
+
+
+
+def test_create_compose_template_customer_service(tmp_path):
+    written = create_compose_project("customer-service", str(tmp_path))
+
+    assert str(tmp_path / "docker-compose.yml") in written
+    compose = (tmp_path / "docker-compose.yml").read_text(encoding="utf-8")
+    readme = (tmp_path / "README.md").read_text(encoding="utf-8")
+    summary = render_compose_create_summary("customer-service", str(tmp_path), written)
+    assert "python:3.12-slim" in compose
+    assert "host.docker.internal" in compose
+    assert "did not pull images" in readme
+    assert "Docker Compose Files Created" in summary
+
+
+def test_create_compose_template_open_webui(tmp_path):
+    create_compose_project("open-webui", str(tmp_path))
+
+    compose = (tmp_path / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "open-webui" in compose
+    assert "3000:8080" in compose
+    assert "local-placeholder" in (tmp_path / ".env.example").read_text(encoding="utf-8")
+    assert "open-webui" in compose_template_names()
+
+
+
+def test_template_registry_renderer():
+    rendered = render_template_registry()
+
+    assert "InferDoctor Template Registry" in rendered
+    assert "built-in templates" in rendered
+    assert "No remote template execution" in rendered

@@ -4,7 +4,13 @@ InferDoctor helps you diagnose a local AI machine, understand a practical stack 
 
 ## Install
 
-PyPI publishing is not assumed for the current development branch. Install from GitHub for now:
+Install the published package from PyPI:
+
+```bash
+pip install inferdoctor
+```
+
+Alternative developer install from GitHub:
 
 ```bash
 python -m pip install "git+https://github.com/anguoyang/inferdoctor.git@dev"
