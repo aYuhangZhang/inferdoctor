@@ -5,6 +5,7 @@ import pytest
 from inferdoctor.cli import _results_for_target, main
 from inferdoctor.core.config import Config
 from inferdoctor.core.models import CheckResult, Status
+from inferdoctor.i18n import t
 
 
 def _sample_result():
@@ -27,6 +28,33 @@ def test_default_command_renders_health_dashboard(results, capsys):
     assert exit_code == 0
     assert "InferDoctor - Local AI Stack Health Check" in output
     assert "Overall Health: 100 / 100" in output
+    results.assert_called_once_with(None, None, None, None)
+
+
+@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+def test_global_language_flag_uses_check_command(results, capsys):
+    exit_code = main(["--language", "zh"])
+
+    assert exit_code == 0
+    assert "InferDoctor - Local AI Stack Health Check" in capsys.readouterr().out
+    results.assert_called_once_with(None, None, None, None, "zh")
+
+
+@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+def test_global_language_flag_supports_japanese(results, capsys):
+    exit_code = main(["--language", "ja"])
+
+    assert exit_code == 0
+    assert "InferDoctor - Local AI Stack Health Check" in capsys.readouterr().out
+    results.assert_called_once_with(None, None, None, None, "ja")
+
+
+@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+def test_default_command_does_not_force_language_override(results, capsys):
+    exit_code = main([])
+
+    assert exit_code == 0
+    assert "InferDoctor - Local AI Stack Health Check" in capsys.readouterr().out
     results.assert_called_once_with(None, None, None, None)
 
 
@@ -73,6 +101,10 @@ def test_timeout_must_be_positive(capsys):
 
     assert exc.value.code == 2
     assert "must be greater than zero" in capsys.readouterr().err
+
+
+def test_translation_falls_back_to_english_for_unknown_language():
+    assert t("dashboard_title", "fr") == "InferDoctor - Local AI Stack Health Check"
 
 
 def test_endpoint_override_rejects_invalid_url():
