@@ -7,7 +7,7 @@ import pytest
 from urllib.error import HTTPError, URLError
 
 from inferdoctor.core import perf
-from inferdoctor.core.perf import perf_result_to_dict, render_perf_json, render_perf_markdown, render_perf_result, run_endpoint_smoke, run_streaming_smoke
+from inferdoctor.core.perf import PerfResult, perf_result_to_dict, render_perf_json, render_perf_markdown, render_perf_result, run_endpoint_smoke, run_streaming_smoke
 
 
 class FakeResponse:
@@ -404,3 +404,46 @@ def test_perf_markdown_report_is_issue_friendly(monkeypatch):
     assert "# InferDoctor Performance Smoke Test" in rendered
     assert "not a benchmark" in rendered
     assert "## Suggestions" in rendered
+
+
+
+def test_experience_readiness_thresholds_are_transparent():
+    responsive = perf._evaluate_experience(PerfResult(
+        mode="streaming",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        streaming_supported="confirmed",
+        ttft_seconds=1.0,
+        total_latency_seconds=6.0,
+        successful_runs=1,
+    ))
+    assert responsive.category == "Responsive for interactive use"
+    assert responsive.confidence == "low"
+    assert "single measured run" in responsive.explanation
+
+    high_ttft = perf._evaluate_experience(PerfResult(
+        mode="streaming",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        streaming_supported="confirmed",
+        ttft_seconds=3.5,
+        rough_tokens_per_second=60,
+        successful_runs=2,
+    ))
+    assert high_ttft.category == "Likely frustrating without progress feedback"
+    assert "Fast TPS does not compensate" in high_ttft.explanation
+
+    failure = perf._evaluate_experience(PerfResult(
+        mode="endpoint",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=False,
+        openai_compatible="no",
+        failed_runs=1,
+    ))
+    assert failure.category == "Endpoint/configuration failure"
+    assert failure.confidence == "high"

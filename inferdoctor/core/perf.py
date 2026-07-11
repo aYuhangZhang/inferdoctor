@@ -517,48 +517,47 @@ def _evaluate_experience(result: PerfResult) -> ExperienceReadiness:
     total = result.total_latency_seconds
     tps = result.rough_tokens_per_second
     streaming = result.streaming_supported
-    confidence = "medium" if result.successful_runs >= 2 else "low"
-    if result.successful_runs >= 2 and result.failed_runs == 0:
-        confidence = "medium"
+    confidence = "medium" if result.successful_runs >= 2 and result.failed_runs == 0 else "low"
+    single_run_note = " A single measured run is not enough for a stability claim." if result.successful_runs == 1 else ""
     if streaming == "confirmed" and ttft is not None and ttft <= 1.5:
         return ExperienceReadiness(
             "Responsive for interactive use",
-            "The first non-empty generated content arrived quickly and streaming was confirmed.",
+            "The first non-empty generated content arrived quickly and streaming was confirmed." + single_run_note,
             confidence,
             ["Keep streaming enabled.", "Use a warmup prompt before demos.", "Keep context size controlled."],
         )
     if streaming == "confirmed" and ttft is not None and ttft <= 3.0:
         return ExperienceReadiness(
             "Usable with streaming",
-            "Streaming is working, but TTFT may be noticeable for impatient users.",
+            "Streaming is working, but TTFT may be noticeable for impatient users." + single_run_note,
             confidence,
             ["Warm up the endpoint.", "Reduce prompt/context size.", "Measure cold and warm runs with --runs 2 --warmup 1."],
         )
     if total is not None and total <= 5.0 and streaming in {"not_requested", "accepted_full_response"}:
         return ExperienceReadiness(
             "Acceptable for an internal prototype",
-            "The response completed quickly enough for basic demos, but streaming was not confirmed.",
+            "The response completed quickly enough for basic demos, but streaming was not confirmed." + single_run_note,
             confidence,
             ["Validate streaming before customer-facing demos.", "Show progress while waiting.", "Use inferdoctor perf streaming."],
         )
     if ttft is not None and ttft > 3.0:
         return ExperienceReadiness(
             "Likely frustrating without progress feedback",
-            "TTFT is high; users may see a blank wait before any answer appears.",
+            "TTFT is high; users may see a blank wait before any answer appears. Fast TPS does not compensate for a long blank wait." + single_run_note,
             confidence,
             ["Show progress immediately.", "Warm up the model.", "Use a smaller model or shorter context."],
         )
     if total is not None and total > 10.0:
         return ExperienceReadiness(
             "Too slow for an interactive demo",
-            "Total latency is high for an interactive local AI app.",
+            "Total latency is high for an interactive local AI app. Streaming may improve perception, but the full turn still feels slow." + single_run_note,
             confidence,
             ["Reduce context length.", "Try a smaller or quantized model.", "Check GPU/runtime fit."],
         )
     if tps is not None and tps < 12:
         return ExperienceReadiness(
             "Likely frustrating without progress feedback",
-            "Output speed is low, so long answers will feel slow even after generation starts.",
+            "Output speed is low, so long answers will feel slow even after generation starts." + single_run_note,
             confidence,
             ["Keep responses short.", "Use streaming.", "Try a smaller model for chat-heavy workflows."],
         )

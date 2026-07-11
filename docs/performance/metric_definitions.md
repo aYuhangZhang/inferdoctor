@@ -50,3 +50,18 @@ Streaming state is reported as one of:
 ## Smoke Test, Not Benchmark
 
 These measurements use a tiny built-in prompt, strict timeouts, and at most a few bounded requests. They are useful for early diagnosis and demo readiness, but not for publishing throughput or quality claims.
+
+
+## Experience Readiness
+
+InferDoctor maps smoke-test metrics to a small set of user-experience categories:
+
+- Responsive for interactive use
+- Usable with streaming
+- Acceptable for an internal prototype
+- Likely frustrating without progress feedback
+- Too slow for an interactive demo
+- Inconclusive
+- Endpoint/configuration failure
+
+The thresholds are heuristics. A low TTFT can make a slower total response feel acceptable when streaming is smooth. A high TPS does not compensate for a long blank wait before the first token. A single measured run is useful for smoke testing but not enough for stability claims.
