@@ -30,3 +30,11 @@ inferdoctor optimize rag --retrieval-ms 900 --rerank-ms 1500 --top-k 12
 ## Template Fit
 
 The `local-doc-qa` starter uses simple keyword retrieval and no vector database by default. It is intentionally small so beginners can understand the request flow before adding embeddings, rerankers, or a vector store.
+
+
+## Related Guides
+
+- [Metric definitions](metric_definitions.md)
+- [Performance reports](performance_reports.md)
+- [Troubleshooting slow responses](troubleshooting_slow_responses.md)
+- [Customer experience checklist](customer_experience_checklist.md)

@@ -29,3 +29,11 @@ inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b
 - Check whether the runtime is falling back to CPU.
 - Use Ollama for easiest setup or vLLM/SGLang for higher-throughput serving when appropriate.
 - Separate retrieval latency from generation latency in your logs.
+
+
+## Related Guides
+
+- [Metric definitions](metric_definitions.md)
+- [Performance reports](performance_reports.md)
+- [Troubleshooting slow responses](troubleshooting_slow_responses.md)
+- [Customer experience checklist](customer_experience_checklist.md)

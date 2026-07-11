@@ -26,3 +26,11 @@ inferdoctor optimize endpoint --streaming --ttft 1.8 --tps 35
 ## Caveats
 
 InferDoctor estimates rough output speed only when it can safely observe response text. It is not a tokenizer and does not claim benchmark-grade TPS.
+
+
+## Related Guides
+
+- [Metric definitions](metric_definitions.md)
+- [Performance reports](performance_reports.md)
+- [Troubleshooting slow responses](troubleshooting_slow_responses.md)
+- [Customer experience checklist](customer_experience_checklist.md)

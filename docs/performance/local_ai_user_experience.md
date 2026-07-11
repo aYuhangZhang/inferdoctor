@@ -30,3 +30,11 @@ Use a tiny prompt, keep timeouts strict, and interpret the result as an early wa
 - It does not profile kernel-level runtime behavior.
 - It does not know your model architecture, KV cache settings, batching policy, or real user traffic.
 - It does not install or start Ollama, vLLM, SGLang, Dify, or any other runtime.
+
+
+## Related Guides
+
+- [Metric definitions](metric_definitions.md)
+- [Performance reports](performance_reports.md)
+- [Troubleshooting slow responses](troubleshooting_slow_responses.md)
+- [Customer experience checklist](customer_experience_checklist.md)
