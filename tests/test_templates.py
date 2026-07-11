@@ -33,6 +33,8 @@ def test_create_customer_service_template(tmp_path):
     app = (tmp_path / "app.py").read_text(encoding="utf-8")
     faq = (tmp_path / "data" / "faq.md").read_text(encoding="utf-8")
     readme = (tmp_path / "README.md").read_text(encoding="utf-8")
+    env_example = (tmp_path / ".env.example").read_text(encoding="utf-8")
+    config = (tmp_path / "config.yaml").read_text(encoding="utf-8")
     assert (tmp_path / "prompts" / "system_prompt.md").exists()
     assert (tmp_path / "troubleshooting.md").exists()
     assert (tmp_path / ".env.example").exists()
@@ -48,12 +50,19 @@ def test_create_customer_service_template(tmp_path):
     assert "inferdoctor template validate ." in readme
     assert "inferdoctor template smoke-test ." in readme
     assert "Expected File Tree" in readme
+    assert "TTFT" in readme
+    assert "LOCAL_AI_STREAMING=true" in env_example
+    assert "streaming: true" in config
+    assert "max_context_chars" in config
     py_compile.compile(str(tmp_path / "app.py"), doraise=True)
     help_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--help"], capture_output=True, text=True, check=True)
     assert "--check-config" in help_result.stdout
     assert "--dry-run" in help_result.stdout
     dry_run = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--dry-run"], capture_output=True, text=True, check=True)
     assert "Dry run: no endpoint call was made" in dry_run.stdout
+    assert "Streaming: enabled" in dry_run.stdout
+    assert "Max context chars" in dry_run.stdout
+    assert "perf streaming" in dry_run.stdout
     assert "Local AI starter configured" in app
     assert "A live endpoint call happens only after you send a message" in app
     assert "KeyboardInterrupt" in app
@@ -70,6 +79,7 @@ def test_create_restaurant_template(tmp_path):
 
     menu = (tmp_path / "data" / "menu.yaml").read_text(encoding="utf-8")
     policies = (tmp_path / "data" / "policies.md").read_text(encoding="utf-8")
+    config = (tmp_path / "config.yaml").read_text(encoding="utf-8")
     assert (tmp_path / "prompts" / "system_prompt.md").exists()
     assert (tmp_path / "examples" / "sample_orders.md").exists()
     assert (tmp_path / "troubleshooting.md").exists()
@@ -78,6 +88,8 @@ def test_create_restaurant_template(tmp_path):
     assert "Gyoza" in menu
     assert "allergies" in policies
     assert "payment" in policies
+    assert "streaming: true" in config
+    assert "warmup_prompt" in config
     py_compile.compile(str(tmp_path / "app.py"), doraise=True)
     help_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--help"], capture_output=True, text=True, check=True)
     assert "--check-config" in help_result.stdout
@@ -90,7 +102,13 @@ def test_create_local_doc_qa_template(tmp_path):
     assert (tmp_path / "query.py").exists()
     assert (tmp_path / ".env.example").exists()
     assert (tmp_path / "troubleshooting.md").exists()
-    assert "keyword" in (tmp_path / "config.yaml").read_text(encoding="utf-8")
+    config = (tmp_path / "config.yaml").read_text(encoding="utf-8")
+    readme = (tmp_path / "README.md").read_text(encoding="utf-8")
+    assert "keyword" in config
+    assert "streaming: true" in config
+    assert "top_k: 4" in config
+    assert "context_budget" in config
+    assert "RAG UX Notes" in readme
     assert "Top local context matches" in (tmp_path / "query.py").read_text(encoding="utf-8")
     assert "OpenAI-compatible endpoint" in (tmp_path / "docs" / "sample.md").read_text(encoding="utf-8")
     py_compile.compile(str(tmp_path / "ingest.py"), doraise=True)
@@ -104,8 +122,11 @@ def test_create_local_doc_qa_template(tmp_path):
     assert "--check-config" in query_help.stdout
     query_config = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--check-config"], capture_output=True, text=True, check=True)
     assert "No endpoint call was made" in query_config.stdout
+    assert "Streaming: enabled" in query_config.stdout
+    assert "top_k: 4" in query_config.stdout
     query_dry_run = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--dry-run"], capture_output=True, text=True, check=True)
     assert "Dry run: no endpoint call was made" in query_dry_run.stdout
+    assert "Retrieval progress" in query_dry_run.stdout
 
 
 
