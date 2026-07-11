@@ -93,13 +93,7 @@ def _perf_warmup(value: str) -> int:
     return _bounded_int(value, 0, 1, "--warmup")
 
 
-def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--config", help="Path to a JSON or simple YAML config")
-    parser.add_argument(
-        "--timeout",
-        type=_positive_float,
-        help="HTTP timeout in seconds; overrides the config value",
-    )
+def _add_language_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--language",
         choices=("auto", "en", "zh", "ja"),
@@ -109,6 +103,17 @@ def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
             "Other commands may remain English in this first i18n release; auto follows the system locale."
         ),
     )
+
+
+def _add_runtime_options(parser: argparse.ArgumentParser, *, include_language: bool = True) -> None:
+    parser.add_argument("--config", help="Path to a JSON or simple YAML config")
+    parser.add_argument(
+        "--timeout",
+        type=_positive_float,
+        help="HTTP timeout in seconds; overrides the config value",
+    )
+    if include_language:
+        _add_language_option(parser)
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -295,7 +300,7 @@ def _parser() -> argparse.ArgumentParser:
         help="Report output format",
     )
     report.add_argument("--output", help="Write the report to this file")
-    _add_runtime_options(report)
+    _add_runtime_options(report, include_language=False)
 
     profile = subparsers.add_parser(
         "profile",
@@ -313,7 +318,7 @@ def _parser() -> argparse.ArgumentParser:
         help="Profile output format",
     )
     profile.add_argument("--output", help="Write the profile to this file")
-    _add_runtime_options(profile)
+    _add_runtime_options(profile, include_language=False)
 
     explain = subparsers.add_parser(
         "explain",
@@ -596,7 +601,7 @@ def _parser() -> argparse.ArgumentParser:
             choices=scenario_names(),
             help="Scenario to show; omit to show all scenarios",
         )
-        _add_runtime_options(scenario_parser)
+        _add_runtime_options(scenario_parser, include_language=False)
 
     add_scenario_parser("scenario")
     add_scenario_parser("scenarios")
@@ -669,6 +674,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(arguments)
     if args.command is None:
         args = parser.parse_args(["check"] + arguments)
+    if getattr(args, "language", None) is not None and args.command != "check":
+        parser.error(
+            "--language currently applies only to the default health dashboard and inferdoctor check; "
+            "other commands may remain English in this first i18n release"
+        )
 
     if args.command == "explain":
         print(render_explanation(args.topic))
@@ -835,43 +845,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.command in ("scenario", "scenarios"):
-        language = getattr(args, "language", None)
-        results, _ = (
-            _results_for_target(
-                None,
-                getattr(args, "config", None),
-                getattr(args, "timeout", None),
-                None,
-                language,
-            )
-            if language is not None
-            else _results_for_target(
-                None,
-                getattr(args, "config", None),
-                getattr(args, "timeout", None),
-                None,
-            )
+        results, _ = _results_for_target(
+            None,
+            getattr(args, "config", None),
+            getattr(args, "timeout", None),
+            None,
         )
         print(render_scenarios(evaluate_scenarios(results, args.target)))
         return _exit_code(results)
 
     if args.command == "profile":
-        language = getattr(args, "language", None)
-        results, config = (
-            _results_for_target(
-                None,
-                getattr(args, "config", None),
-                getattr(args, "timeout", None),
-                None,
-                language,
-            )
-            if language is not None
-            else _results_for_target(
-                None,
-                getattr(args, "config", None),
-                getattr(args, "timeout", None),
-                None,
-            )
+        results, config = _results_for_target(
+            None,
+            getattr(args, "config", None),
+            getattr(args, "timeout", None),
+            None,
         )
         rendered = (
             render_profile_json(results, config)
@@ -894,27 +882,33 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(rendered)
         return _exit_code(results)
 
-    language = getattr(args, "language", None)
-    results, config = (
-        _results_for_target(
-            getattr(args, "target", None),
-            getattr(args, "config", None),
-            getattr(args, "timeout", None),
-            getattr(args, "endpoint", None),
-            language,
-        )
-        if language is not None
-        else _results_for_target(
-            getattr(args, "target", None),
-            getattr(args, "config", None),
-            getattr(args, "timeout", None),
-            getattr(args, "endpoint", None),
-        )
-    )
     if args.command == "check":
+        language = getattr(args, "language", None)
+        results, config = (
+            _results_for_target(
+                getattr(args, "target", None),
+                getattr(args, "config", None),
+                getattr(args, "timeout", None),
+                getattr(args, "endpoint", None),
+                language,
+            )
+            if language is not None
+            else _results_for_target(
+                getattr(args, "target", None),
+                getattr(args, "config", None),
+                getattr(args, "timeout", None),
+                getattr(args, "endpoint", None),
+            )
+        )
         print(render_dashboard(results, config, verbose=args.verbose, language=config.language))
         return _exit_code(results)
 
+    results, config = _results_for_target(
+        None,
+        getattr(args, "config", None),
+        getattr(args, "timeout", None),
+        None,
+    )
     rendered = (
         render_json(results)
         if args.format == "json"

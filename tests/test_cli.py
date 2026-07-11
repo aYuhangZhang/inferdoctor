@@ -69,6 +69,30 @@ def test_check_command_renders_dashboard(results, capsys):
 
 
 @patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+def test_check_command_accepts_language(results, capsys):
+    exit_code = main(["check", "--language", "zh"])
+
+    assert exit_code == 0
+    results.assert_called_once_with(None, None, None, None, "zh")
+
+
+def test_report_command_rejects_language_option(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["report", "--language", "zh", "--format", "markdown"])
+
+    assert exc.value.code == 2
+    assert "unrecognized arguments: --language zh" in capsys.readouterr().err
+
+
+def test_global_language_rejects_non_dashboard_command(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--language", "zh", "template", "list"])
+
+    assert exc.value.code == 2
+    assert "--language currently applies only" in capsys.readouterr().err
+
+
+@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
 def test_report_command_writes_json(results, tmp_path):
     output = tmp_path / "report.json"
 
