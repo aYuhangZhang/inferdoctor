@@ -58,6 +58,8 @@ def test_create_customer_service_template(tmp_path):
     help_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--help"], capture_output=True, text=True, check=True)
     assert "--check-config" in help_result.stdout
     assert "--dry-run" in help_result.stdout
+    assert "--check-endpoint" in help_result.stdout
+    assert "--warmup" in help_result.stdout
     dry_run = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--dry-run"], capture_output=True, text=True, check=True)
     assert "Dry run: no endpoint call was made" in dry_run.stdout
     assert "Streaming: enabled" in dry_run.stdout
@@ -66,6 +68,9 @@ def test_create_customer_service_template(tmp_path):
     assert "Local AI starter configured" in app
     assert "A live endpoint call happens only after you send a message" in app
     assert "KeyboardInterrupt" in app
+    assert "check_endpoint" in app
+    assert "Running one explicit warmup prompt" in app
+    assert "Connecting to local endpoint" in app
     assert "--dry-run" in help_result.stdout
     check_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--check-config"], capture_output=True, text=True, check=True)
     assert "No endpoint call was made" in check_result.stdout
@@ -93,6 +98,8 @@ def test_create_restaurant_template(tmp_path):
     py_compile.compile(str(tmp_path / "app.py"), doraise=True)
     help_result = subprocess.run([sys.executable, str(tmp_path / "app.py"), "--help"], capture_output=True, text=True, check=True)
     assert "--check-config" in help_result.stdout
+    assert "--check-endpoint" in help_result.stdout
+    assert "--warmup" in help_result.stdout
 
 
 def test_create_local_doc_qa_template(tmp_path):
@@ -109,7 +116,11 @@ def test_create_local_doc_qa_template(tmp_path):
     assert "top_k: 4" in config
     assert "context_budget" in config
     assert "RAG UX Notes" in readme
-    assert "Top local context matches" in (tmp_path / "query.py").read_text(encoding="utf-8")
+    query_source = (tmp_path / "query.py").read_text(encoding="utf-8")
+    assert "Top local context matches" in query_source
+    assert "ask_local_model" in query_source
+    assert "read_streaming_response" in query_source
+    assert "Connecting to local endpoint" in query_source
     assert "OpenAI-compatible endpoint" in (tmp_path / "docs" / "sample.md").read_text(encoding="utf-8")
     py_compile.compile(str(tmp_path / "ingest.py"), doraise=True)
     py_compile.compile(str(tmp_path / "query.py"), doraise=True)
@@ -120,6 +131,9 @@ def test_create_local_doc_qa_template(tmp_path):
     assert "keyword index" in query_help.stdout
     assert "--dry-run" in query_help.stdout
     assert "--check-config" in query_help.stdout
+    assert "--check-endpoint" in query_help.stdout
+    assert "--warmup" in query_help.stdout
+    assert "--generate" in query_help.stdout
     query_config = subprocess.run([sys.executable, str(tmp_path / "query.py"), "--check-config"], capture_output=True, text=True, check=True)
     assert "No endpoint call was made" in query_config.stdout
     assert "Streaming: enabled" in query_config.stdout

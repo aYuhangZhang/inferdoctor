@@ -351,6 +351,7 @@ def load_settings() -> dict[str, object]:
     streaming_text = os.environ.get("LOCAL_AI_STREAMING") or env_file.get("LOCAL_AI_STREAMING") or config.get("streaming")
     max_context_text = os.environ.get("LOCAL_AI_MAX_CONTEXT_CHARS") or env_file.get("LOCAL_AI_MAX_CONTEXT_CHARS") or config.get("max_context_chars")
     warmup_prompt = os.environ.get("LOCAL_AI_WARMUP_PROMPT") or env_file.get("LOCAL_AI_WARMUP_PROMPT") or config.get("warmup_prompt") or ""
+    timeout_text = os.environ.get("LOCAL_AI_TIMEOUT") or env_file.get("LOCAL_AI_TIMEOUT") or config.get("timeout_seconds") or config.get("timeout")
     show_progress_text = os.environ.get("LOCAL_AI_SHOW_PROGRESS") or env_file.get("LOCAL_AI_SHOW_PROGRESS") or config.get("show_progress")
     health_check_text = os.environ.get("LOCAL_AI_ENDPOINT_HEALTH_CHECK") or env_file.get("LOCAL_AI_ENDPOINT_HEALTH_CHECK") or config.get("endpoint_health_check")
     return {
@@ -418,6 +419,23 @@ def read_streaming_response(response, echo: bool = False) -> str:
     return "" if echo else "".join(chunks).strip()
 
 
+def models_url(base_url: str) -> str:
+    return base_url + "/models" if base_url.rstrip("/").endswith("/v1") else base_url.rstrip("/") + "/v1/models"
+
+
+def check_endpoint(settings: dict[str, object]) -> str:
+    request = urllib.request.Request(str(models_url(str(settings["base_url"]))), headers={"Accept": "application/json"}, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=int(settings["timeout"])) as response:
+            if 200 <= response.getcode() < 300:
+                return "Endpoint health check passed: /models responded."
+            return "Endpoint health check returned HTTP {0}.".format(response.getcode())
+    except urllib.error.HTTPError as exc:
+        return "Endpoint health check returned HTTP {0}. Check base URL, auth, and runtime logs.".format(exc.code)
+    except urllib.error.URLError as exc:
+        return "Endpoint health check failed. Check LOCAL_AI_BASE_URL, port, container networking, and whether the runtime is running. Details: {0}".format(exc.reason)
+
+
 def ask_local_model(message: str, echo_stream: bool = False) -> str:
     settings = load_settings()
     context = trim_context(load_context(), int(settings["max_context_chars"]))
@@ -459,6 +477,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--check-config", action="store_true", help="Print resolved endpoint/model/performance settings and exit without calling the model")
     parser.add_argument("--dry-run", action="store_true", help="Show prompt, local context, and endpoint settings without calling the model")
+    parser.add_argument("--check-endpoint", action="store_true", help="Call /models once to verify the configured endpoint, then exit")
+    parser.add_argument("--warmup", action="store_true", help="Send the configured warmup prompt once before a demo, then exit")
     return parser
 
 
@@ -480,6 +500,18 @@ def main() -> None:
     if args.check_config:
         print_settings(settings)
         print("No endpoint call was made.")
+        return
+    if args.check_endpoint:
+        print_settings(settings)
+        print(check_endpoint(settings))
+        return
+    if args.warmup:
+        print_settings(settings)
+        prompt = str(settings["warmup_prompt"] or "Say hello in one short sentence.")
+        print("Running one explicit warmup prompt. This will call the configured endpoint.")
+        print("Warmup prompt: {0}".format(prompt))
+        answer = ask_local_model(prompt, "", settings, echo_stream=False)
+        print("Warmup response received: {0}".format("yes" if answer else "no"))
         return
     if args.dry_run:
         print("Dry run: no endpoint call was made.")
@@ -504,6 +536,8 @@ def main() -> None:
             break
         if not message:
             continue
+        if settings["show_progress"]:
+            print("Connecting to local endpoint and waiting for first generated content...")
         print("assistant> ", end="", flush=True)
         answer = ask_local_model(message, echo_stream=bool(settings["streaming"]))
         if answer:
@@ -595,6 +629,8 @@ Use whichever runtime you already have running. The app sends requests to `/chat
 - `max_context_chars` or `context_budget` keeps prompts from becoming too large.
 - `warmup_prompt` is a safe reminder for demos; run a tiny warmup question manually before customer-facing demos.
 - Use `--dry-run` and `--check-config` before making any live endpoint call.
+- Use `--check-endpoint` only when you want one live `/models` check.
+- Use `--warmup` only when you explicitly want to send the configured warmup prompt.
 
 Switch streaming off by setting `LOCAL_AI_STREAMING=false` or `streaming: false` in `config.yaml`.
 
@@ -890,8 +926,11 @@ if __name__ == "__main__":
         "query.py": """from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
+import urllib.error
+import urllib.request
 
 INDEX = Path("index.txt")
 CONFIG = Path("config.yaml")
@@ -951,6 +990,7 @@ def load_settings() -> dict[str, object]:
     context_text = os.environ.get("LOCAL_AI_CONTEXT_BUDGET") or env_file.get("LOCAL_AI_CONTEXT_BUDGET") or config.get("context_budget")
     show_progress_text = os.environ.get("LOCAL_AI_SHOW_PROGRESS") or env_file.get("LOCAL_AI_SHOW_PROGRESS") or config.get("show_progress")
     warmup_prompt = os.environ.get("LOCAL_AI_WARMUP_PROMPT") or env_file.get("LOCAL_AI_WARMUP_PROMPT") or config.get("warmup_prompt") or ""
+    timeout_text = os.environ.get("LOCAL_AI_TIMEOUT") or env_file.get("LOCAL_AI_TIMEOUT") or config.get("timeout_seconds") or config.get("timeout")
     return {
         "base_url": base_url.rstrip("/"),
         "model": model,
@@ -960,6 +1000,7 @@ def load_settings() -> dict[str, object]:
         "context_budget": as_int(context_text, 4000),
         "show_progress": as_bool(show_progress_text, True),
         "warmup_prompt": warmup_prompt,
+        "timeout": as_int(timeout_text, 30),
     }
 
 
@@ -980,6 +1021,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("question", nargs="?", help="Question to search for; omit for interactive prompt")
     parser.add_argument("--check-config", action="store_true", help="Print endpoint/model/retrieval/performance settings and exit")
     parser.add_argument("--dry-run", action="store_true", help="Show a safe retrieval preview without calling a model endpoint")
+    parser.add_argument("--check-endpoint", action="store_true", help="Call /models once to verify the configured endpoint, then exit")
+    parser.add_argument("--warmup", action="store_true", help="Send the configured warmup prompt once, then exit")
+    parser.add_argument("--generate", action="store_true", help="After retrieval, send selected context to the configured endpoint")
     return parser
 
 
@@ -990,6 +1034,7 @@ def print_settings(settings: dict[str, object]) -> None:
     print("Streaming: {0}".format("enabled" if settings["streaming"] else "disabled"))
     print("top_k: {0}".format(settings["top_k"]))
     print("Context budget: {0} chars".format(settings["context_budget"]))
+    print("Timeout: {0}s".format(settings["timeout"]))
     print("Show progress: {0}".format("yes" if settings["show_progress"] else "no"))
     if settings["warmup_prompt"]:
         print("Warmup prompt: {0}".format(settings["warmup_prompt"]))
@@ -1001,12 +1046,98 @@ def load_chunks() -> list[str]:
     return [chunk for chunk in INDEX.read_text(encoding="utf-8").split("\\n\\n---\\n\\n") if chunk.strip()]
 
 
+def models_url(base_url: str) -> str:
+    return base_url + "/models" if base_url.rstrip("/").endswith("/v1") else base_url.rstrip("/") + "/v1/models"
+
+
+def check_endpoint(settings: dict[str, object]) -> str:
+    request = urllib.request.Request(str(models_url(str(settings["base_url"]))), headers={"Accept": "application/json"}, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=int(settings["timeout"])) as response:
+            if 200 <= response.getcode() < 300:
+                return "Endpoint health check passed: /models responded."
+            return "Endpoint health check returned HTTP {0}.".format(response.getcode())
+    except urllib.error.HTTPError as exc:
+        return "Endpoint health check returned HTTP {0}. Check base URL, auth, and runtime logs.".format(exc.code)
+    except urllib.error.URLError as exc:
+        return "Endpoint health check failed. Check LOCAL_AI_BASE_URL, port, container networking, and whether the runtime is running. Details: {0}".format(exc.reason)
+
+
+def selected_context(ranked: list[str], settings: dict[str, object]) -> str:
+    joined = "\\n\\n---\\n\\n".join(ranked[: int(settings["top_k"])])
+    return joined[: int(settings["context_budget"])]
+
+
+def read_streaming_response(response) -> str:
+    parts: list[str] = []
+    for raw_line in response:
+        line = raw_line.decode("utf-8", errors="replace").strip()
+        if not line or not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        if payload == "[DONE]":
+            break
+        try:
+            event = json.loads(payload)
+            content = event["choices"][0].get("delta", {}).get("content") or ""
+        except (json.JSONDecodeError, KeyError, IndexError, TypeError, AttributeError):
+            content = ""
+        if content:
+            parts.append(str(content))
+            print(str(content), end="", flush=True)
+    return "".join(parts)
+
+
+def ask_local_model(question: str, context: str, settings: dict[str, object], echo_stream: bool = True) -> str:
+    payload = {
+        "model": settings["model"],
+        "messages": [
+            {"role": "system", "content": "Answer from the provided local context. If the context is insufficient, say so."},
+            {"role": "user", "content": "Context:\\n{0}\\n\\nQuestion: {1}".format(context, question)},
+        ],
+        "temperature": 0.2,
+        "max_tokens": 256,
+        "stream": bool(settings["streaming"]),
+    }
+    request = urllib.request.Request(
+        str(settings["base_url"]) + "/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=int(settings["timeout"])) as response:
+            content_type = response.headers.get("Content-Type", "")
+            if settings["streaming"] and "text/event-stream" in content_type:
+                return read_streaming_response(response) if echo_stream else ""
+            body = json.loads(response.read().decode("utf-8"))
+            return str(body["choices"][0]["message"]["content"]).strip()
+    except urllib.error.HTTPError as exc:
+        return "Endpoint returned HTTP {0}. Check base URL, model name, and whether auth is required.".format(exc.code)
+    except urllib.error.URLError as exc:
+        return "Could not reach local endpoint. Details: {0}".format(exc.reason)
+    except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+        return "Endpoint response did not look like OpenAI chat completions JSON."
+
+
 def main() -> None:
     args = build_parser().parse_args()
     settings = load_settings()
     if args.check_config:
         print_settings(settings)
         print("No endpoint call was made.")
+        return
+    if args.check_endpoint:
+        print_settings(settings)
+        print(check_endpoint(settings))
+        return
+    if args.warmup:
+        print_settings(settings)
+        prompt = str(settings["warmup_prompt"] or "Say hello in one short sentence.")
+        print("Running one explicit warmup prompt. This will call the configured endpoint.")
+        print("Warmup prompt: {0}".format(prompt))
+        answer = ask_local_model(prompt, "", settings, echo_stream=False)
+        print("Warmup response received: {0}".format("yes" if answer else "no"))
         return
     if args.dry_run:
         print("Dry run: no endpoint call was made.")
@@ -1036,7 +1167,19 @@ def main() -> None:
         print()
     if not ranked:
         print("No documents indexed.")
-    print("Next: send this context to your configured local OpenAI-compatible endpoint.")
+    if args.generate:
+        context = selected_context(ranked, settings)
+        if settings["show_progress"]:
+            print("Retrieval complete: selected {0} local context match(es).".format(min(len(ranked), int(settings["top_k"]))))
+            print("Connecting to local endpoint and waiting for first generated content...")
+        print("assistant> ", end="", flush=True)
+        answer = ask_local_model(question, context, settings, echo_stream=bool(settings["streaming"]))
+        if answer:
+            print(answer)
+        else:
+            print()
+    else:
+        print("Next: send this context to your configured local OpenAI-compatible endpoint, or run with --generate when ready.")
     print("Tip: enable streaming and show retrieval progress so users are not left waiting silently.")
     print("Tip: run inferdoctor optimize rag --top-k {0} --streaming if the app feels slow.".format(settings["top_k"]))
 
