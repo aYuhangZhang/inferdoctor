@@ -427,7 +427,7 @@ def test_perf_streaming_command_uses_smoke_runner(smoke, capsys):
         model="local-model",
         reachable=True,
         openai_compatible="yes",
-        streaming_supported="yes",
+        streaming_supported="confirmed",
         ttft_seconds=0.8,
         user_experience="Good for interactive demo",
     )
@@ -442,7 +442,7 @@ def test_perf_streaming_command_uses_smoke_runner(smoke, capsys):
     ])
 
     assert exit_code == 0
-    assert "Streaming supported: yes" in capsys.readouterr().out
+    assert "Streaming observed: confirmed" in capsys.readouterr().out
     smoke.assert_called_once_with("http://127.0.0.1:8000/v1", "local-model", 30.0)
 
 
