@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+
+import pytest
 from urllib.error import HTTPError, URLError
 
 from inferdoctor.core import perf
@@ -329,3 +331,38 @@ def test_models_auth_failure_is_sanitized(monkeypatch):
     assert result.openai_compatible == "no"
     assert result.endpoint == "http://127.0.0.1:8000/v1?api_key=REDACTED"
     assert "secret token" not in "\n".join(result.checks[0].details)
+
+
+
+def test_perf_runs_and_warmup_are_bounded():
+    with pytest.raises(ValueError):
+        run_streaming_smoke("http://127.0.0.1:8000/v1", "local-model", runs=4)
+    with pytest.raises(ValueError):
+        run_endpoint_smoke("http://127.0.0.1:8000/v1", "local-model", warmup=2)
+
+
+def test_streaming_repeatability_summary_uses_measured_runs(monkeypatch):
+    chat_calls = 0
+
+    def fake_urlopen(request, timeout):
+        nonlocal chat_calls
+        if request.full_url.endswith("/models"):
+            return FakeResponse(body=json.dumps({"data": [{"id": "local-model"}]}))
+        chat_calls += 1
+        return FakeResponse(
+            lines=[
+                "data: {\"choices\":[{\"delta\":{\"content\":\"Hello\"}}]}\n",
+                "data: [DONE]\n",
+            ],
+            content_type="text/event-stream",
+        )
+
+    monkeypatch.setattr(perf, "urlopen", fake_urlopen)
+
+    result = run_streaming_smoke("http://127.0.0.1:8000/v1", "local-model", runs=3, warmup=1)
+
+    assert chat_calls == 4
+    assert len(result.runs) == 4
+    assert result.successful_runs == 3
+    assert result.failed_runs == 0
+    assert result.aggregate_metrics["ttft_median"] is not None

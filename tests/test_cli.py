@@ -416,7 +416,7 @@ def test_perf_endpoint_command_uses_smoke_runner(smoke, capsys):
 
     assert exit_code == 0
     assert "Performance UX Smoke Test" in capsys.readouterr().out
-    smoke.assert_called_once_with("http://127.0.0.1:8000/v1", "local-model", 3.0)
+    smoke.assert_called_once_with("http://127.0.0.1:8000/v1", "local-model", 3.0, runs=1, warmup=0)
 
 
 @patch("inferdoctor.cli.run_streaming_smoke")
@@ -443,7 +443,7 @@ def test_perf_streaming_command_uses_smoke_runner(smoke, capsys):
 
     assert exit_code == 0
     assert "Streaming observed: confirmed" in capsys.readouterr().out
-    smoke.assert_called_once_with("http://127.0.0.1:8000/v1", "local-model", 30.0)
+    smoke.assert_called_once_with("http://127.0.0.1:8000/v1", "local-model", 30.0, runs=1, warmup=0)
 
 
 def test_optimize_endpoint_command_renders_advice(capsys):
@@ -481,3 +481,19 @@ def test_optimize_rag_command_renders_advice(capsys):
     output = capsys.readouterr().out
     assert "RAG UX Optimization Advice" in output
     assert "top_k" in output
+
+
+def test_perf_rejects_excessive_runs(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["perf", "streaming", "--endpoint", "http://127.0.0.1:8000/v1", "--model", "local-model", "--runs", "4"])
+
+    assert exc.value.code == 2
+    assert "--runs must be between 1 and 3" in capsys.readouterr().err
+
+
+def test_perf_rejects_excessive_warmup(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["perf", "endpoint", "--endpoint", "http://127.0.0.1:8000/v1", "--model", "local-model", "--warmup", "2"])
+
+    assert exc.value.code == 2
+    assert "--warmup must be between 0 and 1" in capsys.readouterr().err

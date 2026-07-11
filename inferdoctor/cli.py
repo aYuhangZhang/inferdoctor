@@ -74,6 +74,25 @@ def _positive_float(value: str) -> float:
     return parsed
 
 
+
+def _bounded_int(value: str, minimum: int, maximum: int, label: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("{0} must be an integer".format(label)) from exc
+    if parsed < minimum or parsed > maximum:
+        raise argparse.ArgumentTypeError("{0} must be between {1} and {2}".format(label, minimum, maximum))
+    return parsed
+
+
+def _perf_runs(value: str) -> int:
+    return _bounded_int(value, 1, 3, "--runs")
+
+
+def _perf_warmup(value: str) -> int:
+    return _bounded_int(value, 0, 1, "--warmup")
+
+
 def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--config", help="Path to a JSON or simple YAML config")
     parser.add_argument(
@@ -226,6 +245,8 @@ def _parser() -> argparse.ArgumentParser:
     perf_endpoint.add_argument("--endpoint", required=True, help="OpenAI-compatible base URL, usually ending in /v1")
     perf_endpoint.add_argument("--model", help="Model name to use for a tiny chat completion smoke request")
     perf_endpoint.add_argument("--timeout", type=_positive_float, default=30.0, help="Strict request timeout in seconds")
+    perf_endpoint.add_argument("--runs", type=_perf_runs, default=1, help="Measured request count, bounded to 1-3")
+    perf_endpoint.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
     perf_streaming = perf_subparsers.add_parser(
         "streaming",
         help="Smoke-test streaming TTFT for an OpenAI-compatible endpoint",
@@ -238,6 +259,8 @@ def _parser() -> argparse.ArgumentParser:
     perf_streaming.add_argument("--endpoint", required=True, help="OpenAI-compatible base URL, usually ending in /v1")
     perf_streaming.add_argument("--model", required=True, help="Model name to use for the tiny streaming smoke request")
     perf_streaming.add_argument("--timeout", type=_positive_float, default=30.0, help="Strict request timeout in seconds")
+    perf_streaming.add_argument("--runs", type=_perf_runs, default=1, help="Measured request count, bounded to 1-3")
+    perf_streaming.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
 
     report = subparsers.add_parser(
         "report",
@@ -643,10 +666,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "perf":
         if args.perf_command == "endpoint":
-            print(render_perf_result(run_endpoint_smoke(args.endpoint, args.model, args.timeout)))
+            print(render_perf_result(run_endpoint_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)))
             return 0
         if args.perf_command == "streaming":
-            print(render_perf_result(run_streaming_smoke(args.endpoint, args.model, args.timeout)))
+            print(render_perf_result(run_streaming_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)))
             return 0
 
     if args.command == "recommend":
