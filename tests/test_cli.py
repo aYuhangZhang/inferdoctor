@@ -6,6 +6,7 @@ from inferdoctor.cli import _results_for_target, main
 from inferdoctor.core.config import Config
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.i18n import t
+from inferdoctor.core.perf import PerfResult
 
 
 def _sample_result():
@@ -389,3 +390,94 @@ def test_template_registry_command(capsys):
 
     assert exit_code == 0
     assert "InferDoctor Template Registry" in capsys.readouterr().out
+
+
+@patch("inferdoctor.cli.run_endpoint_smoke")
+def test_perf_endpoint_command_uses_smoke_runner(smoke, capsys):
+    smoke.return_value = PerfResult(
+        mode="endpoint",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        user_experience="Good for interactive demo",
+    )
+
+    exit_code = main([
+        "perf",
+        "endpoint",
+        "--endpoint",
+        "http://127.0.0.1:8000/v1",
+        "--model",
+        "local-model",
+        "--timeout",
+        "3",
+    ])
+
+    assert exit_code == 0
+    assert "Performance UX Smoke Test" in capsys.readouterr().out
+    smoke.assert_called_once_with("http://127.0.0.1:8000/v1", "local-model", 3.0)
+
+
+@patch("inferdoctor.cli.run_streaming_smoke")
+def test_perf_streaming_command_uses_smoke_runner(smoke, capsys):
+    smoke.return_value = PerfResult(
+        mode="streaming",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        streaming_supported="yes",
+        ttft_seconds=0.8,
+        user_experience="Good for interactive demo",
+    )
+
+    exit_code = main([
+        "perf",
+        "streaming",
+        "--endpoint",
+        "http://127.0.0.1:8000/v1",
+        "--model",
+        "local-model",
+    ])
+
+    assert exit_code == 0
+    assert "Streaming supported: yes" in capsys.readouterr().out
+    smoke.assert_called_once_with("http://127.0.0.1:8000/v1", "local-model", 30.0)
+
+
+def test_optimize_endpoint_command_renders_advice(capsys):
+    exit_code = main([
+        "optimize",
+        "endpoint",
+        "--runtime",
+        "vllm",
+        "--vram",
+        "24",
+        "--model-size",
+        "14b",
+        "--quant",
+        "q4",
+    ])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "Endpoint UX Optimization Advice" in output
+    assert "inferdoctor perf streaming" in output
+
+
+def test_optimize_rag_command_renders_advice(capsys):
+    exit_code = main([
+        "optimize",
+        "rag",
+        "--top-k",
+        "8",
+        "--ttft",
+        "2.5",
+        "--streaming",
+    ])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "RAG UX Optimization Advice" in output
+    assert "top_k" in output
