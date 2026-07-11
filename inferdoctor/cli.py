@@ -18,6 +18,7 @@ from inferdoctor.core.explain import explain_topics, render_explanation
 from inferdoctor.core.model_fit import estimate_model_fit, render_model_fit
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
+from inferdoctor.core.perf import render_perf_result, run_endpoint_smoke, run_streaming_smoke
 from inferdoctor.core.recommendations import recommend_stack, render_recommendation
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
@@ -165,6 +166,40 @@ def _parser() -> argparse.ArgumentParser:
         choices=("ollama", "vllm"),
         help="Runtime overhead heuristic",
     )
+
+    perf = subparsers.add_parser(
+        "perf",
+        help="Run lightweight local AI performance UX smoke tests",
+        description=(
+            "Measure endpoint reachability, tiny chat latency, and streaming TTFT. "
+            "These are timeout-bounded smoke tests, not benchmarks."
+        ),
+    )
+    perf_subparsers = perf.add_subparsers(dest="perf_command", required=True)
+    perf_endpoint = perf_subparsers.add_parser(
+        "endpoint",
+        help="Smoke-test OpenAI-compatible endpoint latency",
+        description=(
+            "Check /models and optionally run one tiny chat completion request. "
+            "No models are downloaded or services started."
+        ),
+        epilog="Example: inferdoctor perf endpoint --endpoint http://127.0.0.1:8000/v1 --model local-model --timeout 30",
+    )
+    perf_endpoint.add_argument("--endpoint", required=True, help="OpenAI-compatible base URL, usually ending in /v1")
+    perf_endpoint.add_argument("--model", help="Model name to use for a tiny chat completion smoke request")
+    perf_endpoint.add_argument("--timeout", type=_positive_float, default=30.0, help="Strict request timeout in seconds")
+    perf_streaming = perf_subparsers.add_parser(
+        "streaming",
+        help="Smoke-test streaming TTFT for an OpenAI-compatible endpoint",
+        description=(
+            "Send one tiny stream=true chat completion request and measure time to first streamed chunk. "
+            "This is a smoke test, not a benchmark."
+        ),
+        epilog="Example: inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model",
+    )
+    perf_streaming.add_argument("--endpoint", required=True, help="OpenAI-compatible base URL, usually ending in /v1")
+    perf_streaming.add_argument("--model", required=True, help="Model name to use for the tiny streaming smoke request")
+    perf_streaming.add_argument("--timeout", type=_positive_float, default=30.0, help="Strict request timeout in seconds")
 
     report = subparsers.add_parser(
         "report",
@@ -540,6 +575,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "explain":
         print(render_explanation(args.topic))
         return 0
+    if args.command == "perf":
+        if args.perf_command == "endpoint":
+            print(render_perf_result(run_endpoint_smoke(args.endpoint, args.model, args.timeout)))
+            return 0
+        if args.perf_command == "streaming":
+            print(render_perf_result(run_streaming_smoke(args.endpoint, args.model, args.timeout)))
+            return 0
+
     if args.command == "recommend":
         print(
             render_recommendation(
