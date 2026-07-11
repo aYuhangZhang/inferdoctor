@@ -86,6 +86,18 @@ inferdoctor optimize rag --top-k 8 --ttft 2.5 --streaming
 
 These are smoke tests and heuristic suggestions, not formal benchmarks. InferDoctor does not download models, start runtimes, run long load tests, evaluate model quality, or modify system settings.
 
+## Language Support
+
+InferDoctor v0.5 starts with first-step localization for the health dashboard and `inferdoctor check` console summary.
+
+```bash
+inferdoctor --language zh
+inferdoctor --language ja
+inferdoctor check --language en
+```
+
+Supported values are `auto`, `en`, `zh`, and `ja`. `auto` follows the local environment when it can be detected. Other commands, generated templates, JSON schemas, Markdown reports, and structured field names may remain English in this first i18n release so scripts and issue reports stay stable. Unsupported language values are rejected instead of silently falling back.
+
 
 Model recommendation tools help you choose a model. InferDoctor helps you
 understand why your local AI stack is broken and what a practical next setup

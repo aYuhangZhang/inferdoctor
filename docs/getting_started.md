@@ -32,6 +32,18 @@ inferdoctor
 
 This shows the local AI stack health dashboard, overall health score, component status table, and Top Fixes.
 
+## Language Option
+
+The first i18n release localizes the health dashboard and `inferdoctor check` console summary. Other commands may still render English output.
+
+```bash
+inferdoctor --language zh
+inferdoctor --language ja
+inferdoctor check --language en
+```
+
+Use `language: zh`, `language: ja`, `language: en`, or `language: auto` in `inferdoctor.yaml` to set the dashboard language. Unsupported language values fail with a configuration error so mistakes are visible.
+
 ## Recommended Beginner Flow
 
 Start with diagnosis:

@@ -10,7 +10,7 @@
 - Local template registry foundation with conservative safety rules.
 - Project readiness scoring for template validation and smoke tests.
 - More real-world template examples for Dify, Open WebUI, Compose, and bootstrap workflows.
-- Added a first-step i18n foundation for localized health dashboard and console output in English, Chinese, and Japanese; full CLI translation remains future work.
+- Added first-step i18n for the health dashboard and `inferdoctor check` console summary in English, Chinese, and Japanese. Full CLI localization remains future work, and machine-readable schemas keep stable English field names.
 
 ### Safety
 

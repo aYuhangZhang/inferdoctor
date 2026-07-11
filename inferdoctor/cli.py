@@ -104,7 +104,10 @@ def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
         "--language",
         choices=("auto", "en", "zh", "ja"),
         default=None,
-        help="Output language; auto follows the system locale.",
+        help=(
+            "Output language for the health dashboard and console summary. "
+            "Other commands may remain English in this first i18n release; auto follows the system locale."
+        ),
     )
     parser.add_argument(
         "--verbose",
@@ -126,7 +129,10 @@ def _parser() -> argparse.ArgumentParser:
         "--language",
         choices=("auto", "en", "zh", "ja"),
         default=None,
-        help="Output language; auto follows the system locale.",
+        help=(
+            "Output language for the health dashboard and console summary. "
+            "Other commands may remain English in this first i18n release; auto follows the system locale."
+        ),
     )
     parser.add_argument("--version", action="version", version=__version__)
     subparsers = parser.add_subparsers(dest="command")
