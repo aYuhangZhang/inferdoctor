@@ -5,7 +5,7 @@ import pytest
 from inferdoctor.cli import _results_for_target, main
 from inferdoctor.core.config import Config
 from inferdoctor.core.models import CheckResult, Status
-from inferdoctor.i18n import t
+from inferdoctor.i18n import TRANSLATIONS, t
 from inferdoctor.core.perf import PerfResult
 
 
@@ -21,6 +21,13 @@ def _sample_run():
     return [_sample_result()], Config()
 
 
+def _sample_run_for_language(target=None, config_path=None, timeout=None, endpoint=None, language=None):
+    config = Config()
+    if language is not None:
+        config.language = language
+    return [_sample_result()], config
+
+
 @patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
 def test_default_command_renders_health_dashboard(results, capsys):
     exit_code = main([])
@@ -32,21 +39,25 @@ def test_default_command_renders_health_dashboard(results, capsys):
     results.assert_called_once_with(None, None, None, None)
 
 
-@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+@patch("inferdoctor.cli._results_for_target", side_effect=_sample_run_for_language)
 def test_global_language_flag_uses_check_command(results, capsys):
     exit_code = main(["--language", "zh"])
 
+    output = capsys.readouterr().out
     assert exit_code == 0
-    assert "InferDoctor - Local AI Stack Health Check" in capsys.readouterr().out
+    assert "InferDoctor - 本地 AI 堆栈健康检查" in output
+    assert "整体健康度" in output
     results.assert_called_once_with(None, None, None, None, "zh")
 
 
-@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+@patch("inferdoctor.cli._results_for_target", side_effect=_sample_run_for_language)
 def test_global_language_flag_supports_japanese(results, capsys):
     exit_code = main(["--language", "ja"])
 
+    output = capsys.readouterr().out
     assert exit_code == 0
-    assert "InferDoctor - Local AI Stack Health Check" in capsys.readouterr().out
+    assert "InferDoctor - ローカルAIスタックヘルスチェック" in output
+    assert "全体の健全性" in output
     results.assert_called_once_with(None, None, None, None, "ja")
 
 
@@ -68,11 +79,13 @@ def test_check_command_renders_dashboard(results, capsys):
     results.assert_called_once_with("system", None, None, None)
 
 
-@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+@patch("inferdoctor.cli._results_for_target", side_effect=_sample_run_for_language)
 def test_check_command_accepts_language(results, capsys):
     exit_code = main(["check", "--language", "zh"])
 
+    output = capsys.readouterr().out
     assert exit_code == 0
+    assert "InferDoctor - 本地 AI 堆栈健康检查" in output
     results.assert_called_once_with(None, None, None, None, "zh")
 
 
@@ -126,6 +139,31 @@ def test_timeout_must_be_positive(capsys):
 
     assert exc.value.code == 2
     assert "must be greater than zero" in capsys.readouterr().err
+
+
+def test_invalid_language_flag_is_rejected(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--language", "fr"])
+
+    assert exc.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+
+
+def test_invalid_config_language_is_rejected_by_cli(tmp_path):
+    config_path = tmp_path / "inferdoctor.yaml"
+    config_path.write_text("language: fr\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as exc:
+        main(["check", "--config", str(config_path)])
+
+    assert "configuration error" in str(exc.value)
+    assert "language" in str(exc.value)
+
+
+def test_translation_dictionaries_have_identical_key_sets():
+    expected = set(TRANSLATIONS["en"])
+    assert set(TRANSLATIONS["zh"]) == expected
+    assert set(TRANSLATIONS["ja"]) == expected
 
 
 def test_translation_falls_back_to_english_for_unknown_language():
