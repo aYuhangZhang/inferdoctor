@@ -351,6 +351,7 @@ def _parse_sse_response(response: Any, started: float, index: int, warmup: bool,
     malformed_events = 0
     bytes_read = 0
     latest_usage_tokens: Optional[int] = None
+    saw_done = False
     try:
         for _ in range(MAX_SSE_LINES):
             line = response.readline()
@@ -368,6 +369,7 @@ def _parse_sse_response(response: Any, started: float, index: int, warmup: bool,
             if not payload_text:
                 continue
             if payload_text == "[DONE]":
+                saw_done = True
                 break
             try:
                 data = json.loads(payload_text)
@@ -420,9 +422,12 @@ def _parse_sse_response(response: Any, started: float, index: int, warmup: bool,
     ttft = first_content_at - started
     generation_duration = max(total - ttft, 0.0)
     rate, quality = _tps(tokens, generation_duration, source)
-    warning = None
+    warning_parts: List[str] = []
     if malformed_events:
-        warning = "{0} malformed SSE event(s) were ignored.".format(malformed_events)
+        warning_parts.append("{0} malformed SSE event(s) were ignored.".format(malformed_events))
+    if not saw_done:
+        warning_parts.append("Stream ended without a [DONE] event; the response may have been truncated.")
+    warning = " ".join(warning_parts) or None
     return PerfRun(
         index,
         warmup,
