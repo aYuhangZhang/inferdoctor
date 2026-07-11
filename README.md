@@ -6,7 +6,9 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](pyproject.toml)
 
-**InferDoctor diagnoses your local AI stack and helps you start building local AI apps.**
+**InferDoctor helps developers diagnose, plan, bootstrap, and optimize local AI apps.**
+
+Diagnose what is broken. Choose a reasonable stack. Generate a starter app. Validate it. Then improve the user experience before a demo or prototype.
 
 Local AI setup often fails for unclear reasons: ports, CUDA, drivers, runtimes,
 OpenAI-compatible endpoints, model size, and app scaffolding all interact.
@@ -18,7 +20,8 @@ Use it to:
 - find why Ollama, vLLM, SGLang, Xinference, Dify, CUDA, NVIDIA, Docker, or local endpoints are not working;
 - estimate what your machine can realistically run with clear heuristic caveats;
 - choose a practical local AI stack for a goal such as customer service, document Q&A, or a local API;
-- generate, validate, and smoke-test starter projects without contacting a model endpoint.
+- generate, validate, and smoke-test starter projects without contacting a model endpoint;
+- run lightweight endpoint performance smoke tests and get practical TTFT, streaming, TPS, and RAG UX advice.
 
 It is lightweight and read-only by default. It does not install AI runtimes,
 download models, run inference, publish data, or modify system settings.
@@ -54,6 +57,9 @@ inferdoctor stack plan --goal customer-service --vram 24
 inferdoctor template create customer-service --output ./customer-service-demo
 inferdoctor template validate ./customer-service-demo
 inferdoctor template smoke-test ./customer-service-demo
+inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model
+inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b
+inferdoctor optimize rag --top-k 8 --ttft 2.5 --streaming
 ```
 
 On the development branch, v0.5 starter workflows also include optional file generation commands:
@@ -65,6 +71,20 @@ inferdoctor template registry
 ```
 
 These commands generate local files only. They do not pull Docker images, start containers, install runtimes, call endpoints, download models, or run inference.
+
+## Performance UX Smoke Tests
+
+Reachable endpoints are not enough. Local AI apps also need acceptable user experience: first token should appear quickly, streaming should work when enabled, RAG retrieval should show progress, and demos should avoid cold-start surprises.
+
+```bash
+inferdoctor perf endpoint --endpoint http://127.0.0.1:8000/v1 --model local-model
+inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model
+inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b
+inferdoctor optimize rag --top-k 8 --ttft 2.5 --streaming
+```
+
+These are smoke tests and heuristic suggestions, not formal benchmarks. InferDoctor does not download models, start runtimes, run long load tests, or modify system settings.
+
 
 Model recommendation tools help you choose a model. InferDoctor helps you
 understand why your local AI stack is broken and what a practical next setup
@@ -118,10 +138,14 @@ Beginner setup docs and template examples:
 - [`docs/template_registry.md`](docs/template_registry.md)
 - [`docs/hardware_and_model_fit.md`](docs/hardware_and_model_fit.md)
 - [`examples/templates/`](examples/templates/)
+- [`docs/performance/local_ai_user_experience.md`](docs/performance/local_ai_user_experience.md)
+- [`docs/performance/ttft_tps_streaming.md`](docs/performance/ttft_tps_streaming.md)
+- [`docs/performance/rag_latency.md`](docs/performance/rag_latency.md)
+- [`docs/performance/demo_readiness.md`](docs/performance/demo_readiness.md)
 
 ## From Broken Stack to Working App
 
-InferDoctor starts with diagnosis, then guides the next step. The project is
+InferDoctor starts with diagnosis, then guides the next step and helps you improve the early user experience. The project is
 evolving toward hardware-aware stack recommendations, app templates, generated
 configuration, and dry-run bootstrap plans that help beginners move from a
 failing local setup to a small working local AI application.
