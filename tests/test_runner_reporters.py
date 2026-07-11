@@ -79,5 +79,4 @@ def test_console_translations_ja():
 
     console = render_console([result], language="ja")
 
-    assert "suggestion:" in console
-    assert "提案" in console
+    assert "提案：提案" in console

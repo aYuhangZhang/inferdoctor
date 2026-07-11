@@ -113,8 +113,11 @@ def render_dashboard(
             ]
         )
         if fix.config_hint:
-            hint_label = (
-                "Config" if fix.config_hint.startswith("endpoints.") else "Note"
+            hint_label = t(
+                "dashboard_hint_config"
+                if fix.config_hint.startswith("endpoints.")
+                else "dashboard_hint_note",
+                language,
             )
             lines.append(
                 t("dashboard_config", language, hint_label=hint_label, config_hint=fix.config_hint)
