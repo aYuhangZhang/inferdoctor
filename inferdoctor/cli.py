@@ -207,6 +207,12 @@ def _parser() -> argparse.ArgumentParser:
     optimize_endpoint.add_argument("--ttft", type=_positive_float, help="Observed time to first token in seconds")
     optimize_endpoint.add_argument("--tps", type=_positive_float, help="Observed rough output tokens per second")
     optimize_endpoint.add_argument("--latency", type=_positive_float, help="Observed total response latency in seconds")
+    optimize_endpoint.add_argument("--context-tokens", type=int, help="Approximate prompt/context tokens")
+    optimize_endpoint.add_argument("--ttft-variance", type=_positive_float, help="Observed TTFT max/min ratio across runs")
+    optimize_endpoint.add_argument("--containerized", action="store_true", help="Whether the app/runtime is containerized")
+    optimize_endpoint.add_argument("--docker", action="store_true", help="Whether Docker is involved in the endpoint path")
+    optimize_endpoint.add_argument("--cold-start", action="store_true", help="Whether the first request is noticeably slower")
+    optimize_endpoint.add_argument("--cpu-fallback-suspected", action="store_true", help="Whether runtime logs or behavior suggest CPU fallback")
     optimize_rag = optimize_subparsers.add_parser(
         "rag",
         help="Suggest RAG user-experience optimizations",
@@ -667,6 +673,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 ttft=args.ttft,
                 tps=args.tps,
                 latency=args.latency,
+                context_tokens=args.context_tokens,
+                ttft_variance=args.ttft_variance,
+                containerized=args.containerized,
+                docker=args.docker,
+                cold_start=args.cold_start,
+                cpu_fallback_suspected=args.cpu_fallback_suspected,
             )))
             return 0
         if args.optimize_command == "rag":

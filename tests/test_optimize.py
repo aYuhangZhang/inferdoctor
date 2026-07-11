@@ -36,3 +36,38 @@ def test_optimize_rag_advice_for_rerank_latency():
     assert "Retrieval latency" in rendered
     assert "Reranking" in rendered
     assert "top_k=4" in rendered
+
+
+
+def test_optimize_endpoint_advice_is_evidence_structured():
+    report = advise_endpoint(
+        runtime="vllm",
+        vram_gib=24,
+        model_size="32b",
+        quant="q4",
+        streaming=False,
+        ttft=3.2,
+        latency=9.0,
+        context_tokens=12000,
+        ttft_variance=2.5,
+        docker=True,
+        cold_start=True,
+    )
+    rendered = render_optimization_report(report)
+
+    assert "Observation:" in rendered
+    assert "Impact:" in rendered
+    assert "Action:" in rendered
+    assert "Next:" in rendered
+    assert "Limitation:" in rendered
+    assert "TTFT is above 2 seconds" in rendered
+    assert "Context size is large" in rendered
+    assert "Docker" in rendered
+    assert len(report.quick_wins) <= 5
+
+
+def test_optimize_endpoint_cpu_fallback_advice():
+    rendered = render_optimization_report(advise_endpoint(cpu_fallback_suspected=True))
+
+    assert "CPU fallback" in rendered
+    assert "inferdoctor check nvidia" in rendered
