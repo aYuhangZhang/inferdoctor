@@ -19,7 +19,7 @@ from inferdoctor.core.model_fit import estimate_model_fit, render_model_fit
 from inferdoctor.core.optimize import advise_endpoint, advise_rag, render_optimization_report
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
-from inferdoctor.core.perf import render_perf_result, run_endpoint_smoke, run_streaming_smoke
+from inferdoctor.core.perf import render_perf_json, render_perf_markdown, render_perf_result, run_endpoint_smoke, run_streaming_smoke
 from inferdoctor.core.recommendations import recommend_stack, render_recommendation
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
@@ -247,6 +247,8 @@ def _parser() -> argparse.ArgumentParser:
     perf_endpoint.add_argument("--timeout", type=_positive_float, default=30.0, help="Strict request timeout in seconds")
     perf_endpoint.add_argument("--runs", type=_perf_runs, default=1, help="Measured request count, bounded to 1-3")
     perf_endpoint.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
+    perf_endpoint.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
+    perf_endpoint.add_argument("--output", help="Write report to a file instead of stdout")
     perf_streaming = perf_subparsers.add_parser(
         "streaming",
         help="Smoke-test streaming TTFT for an OpenAI-compatible endpoint",
@@ -261,6 +263,8 @@ def _parser() -> argparse.ArgumentParser:
     perf_streaming.add_argument("--timeout", type=_positive_float, default=30.0, help="Strict request timeout in seconds")
     perf_streaming.add_argument("--runs", type=_perf_runs, default=1, help="Measured request count, bounded to 1-3")
     perf_streaming.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
+    perf_streaming.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
+    perf_streaming.add_argument("--output", help="Write report to a file instead of stdout")
 
     report = subparsers.add_parser(
         "report",
@@ -620,6 +624,22 @@ def _results_for_target(
     return run_checks(checkers, config), config
 
 
+
+def _render_perf_output(result, output_format: str) -> str:
+    if output_format == "json":
+        return render_perf_json(result)
+    if output_format == "markdown":
+        return render_perf_markdown(result)
+    return render_perf_result(result)
+
+
+def _emit_output(content: str, output: Optional[str]) -> None:
+    if output:
+        Path(output).write_text(content + "\n", encoding="utf-8")
+    else:
+        print(content)
+
+
 def _exit_code(results: List[CheckResult]) -> int:
     return 1 if any(result.status == Status.FAIL for result in results) else 0
 
@@ -666,10 +686,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "perf":
         if args.perf_command == "endpoint":
-            print(render_perf_result(run_endpoint_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)))
+            result = run_endpoint_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)
+            _emit_output(_render_perf_output(result, args.format), args.output)
             return 0
         if args.perf_command == "streaming":
-            print(render_perf_result(run_streaming_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)))
+            result = run_streaming_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)
+            _emit_output(_render_perf_output(result, args.format), args.output)
             return 0
 
     if args.command == "recommend":

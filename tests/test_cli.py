@@ -497,3 +497,63 @@ def test_perf_rejects_excessive_warmup(capsys):
 
     assert exc.value.code == 2
     assert "--warmup must be between 0 and 1" in capsys.readouterr().err
+
+
+@patch("inferdoctor.cli.run_endpoint_smoke")
+def test_perf_endpoint_writes_json_report(smoke, tmp_path, capsys):
+    smoke.return_value = PerfResult(
+        mode="endpoint",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        successful_runs=1,
+    )
+    output = tmp_path / "perf.json"
+
+    exit_code = main([
+        "perf",
+        "endpoint",
+        "--endpoint",
+        "http://127.0.0.1:8000/v1",
+        "--model",
+        "local-model",
+        "--format",
+        "json",
+        "--output",
+        str(output),
+    ])
+
+    assert exit_code == 0
+    assert capsys.readouterr().out == ""
+    assert "\"schema_version\": \"inferdoctor.perf.v1\"" in output.read_text(encoding="utf-8")
+
+
+@patch("inferdoctor.cli.run_streaming_smoke")
+def test_perf_streaming_writes_markdown_report(smoke, tmp_path):
+    smoke.return_value = PerfResult(
+        mode="streaming",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        streaming_supported="confirmed",
+        successful_runs=1,
+    )
+    output = tmp_path / "perf.md"
+
+    exit_code = main([
+        "perf",
+        "streaming",
+        "--endpoint",
+        "http://127.0.0.1:8000/v1",
+        "--model",
+        "local-model",
+        "--format",
+        "markdown",
+        "--output",
+        str(output),
+    ])
+
+    assert exit_code == 0
+    assert "# InferDoctor Performance Smoke Test" in output.read_text(encoding="utf-8")

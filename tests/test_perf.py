@@ -7,7 +7,7 @@ import pytest
 from urllib.error import HTTPError, URLError
 
 from inferdoctor.core import perf
-from inferdoctor.core.perf import render_perf_result, run_endpoint_smoke, run_streaming_smoke
+from inferdoctor.core.perf import perf_result_to_dict, render_perf_json, render_perf_markdown, render_perf_result, run_endpoint_smoke, run_streaming_smoke
 
 
 class FakeResponse:
@@ -366,3 +366,41 @@ def test_streaming_repeatability_summary_uses_measured_runs(monkeypatch):
     assert result.successful_runs == 3
     assert result.failed_runs == 0
     assert result.aggregate_metrics["ttft_median"] is not None
+
+
+
+def test_perf_json_report_has_stable_redacted_fields(monkeypatch):
+    def fake_urlopen(request, timeout):
+        if request.full_url.endswith("/models"):
+            return FakeResponse(body=json.dumps({"data": [{"id": "local-model"}]}))
+        return FakeResponse(body=json.dumps({"choices": [{"message": {"content": "ok"}}], "usage": {"completion_tokens": 2}}))
+
+    monkeypatch.setattr(perf, "urlopen", fake_urlopen)
+
+    result = run_endpoint_smoke("http://user:pass@127.0.0.1:8000/v1?api_key=secret&debug=true", "local-model", timeout=3)
+    report = perf_result_to_dict(result)
+    rendered = render_perf_json(result)
+
+    assert report["schema_version"] == "inferdoctor.perf.v1"
+    assert report["endpoint"] == "http://127.0.0.1:8000/v1?api_key=REDACTED&debug=true"
+    assert "user:pass" not in rendered
+    assert "secret" not in rendered
+    assert "raw" not in report
+    assert "metrics" in report
+    assert "metric_quality" in report
+
+
+def test_perf_markdown_report_is_issue_friendly(monkeypatch):
+    def fake_urlopen(request, timeout):
+        if request.full_url.endswith("/models"):
+            return FakeResponse(body=json.dumps({"data": [{"id": "local-model"}]}))
+        return FakeResponse(body=json.dumps({"choices": [{"message": {"content": "ok"}}]}))
+
+    monkeypatch.setattr(perf, "urlopen", fake_urlopen)
+
+    result = run_endpoint_smoke("http://127.0.0.1:8000/v1", "local-model", timeout=3)
+    rendered = render_perf_markdown(result)
+
+    assert "# InferDoctor Performance Smoke Test" in rendered
+    assert "not a benchmark" in rendered
+    assert "## Suggestions" in rendered
