@@ -6,9 +6,9 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](pyproject.toml)
 
-**InferDoctor helps developers diagnose, plan, bootstrap, and optimize local AI apps.**
+**InferDoctor helps developers diagnose, plan, bootstrap, measure, and optimize local AI apps.**
 
-Diagnose what is broken. Choose a reasonable stack. Generate a starter app. Validate it. Then improve the user experience before a demo or prototype.
+Diagnose what is broken. Choose a reasonable stack. Generate a starter app. Validate it. Measure responsiveness. Then improve the user experience before a demo or prototype.
 
 Local AI setup often fails for unclear reasons: ports, CUDA, drivers, runtimes,
 OpenAI-compatible endpoints, model size, and app scaffolding all interact.
@@ -21,7 +21,8 @@ Use it to:
 - estimate what your machine can realistically run with clear heuristic caveats;
 - choose a practical local AI stack for a goal such as customer service, document Q&A, or a local API;
 - generate, validate, and smoke-test starter projects without contacting a model endpoint;
-- run lightweight endpoint performance smoke tests and get practical TTFT, streaming, TPS, and RAG UX advice.
+- measure local endpoint responsiveness with bounded smoke tests;
+- get practical TTFT, streaming, TPS, cold/warm, endpoint, and RAG UX optimization advice.
 
 It is lightweight and read-only by default. It does not install AI runtimes,
 download models, run inference, publish data, or modify system settings.
@@ -57,8 +58,8 @@ inferdoctor stack plan --goal customer-service --vram 24
 inferdoctor template create customer-service --output ./customer-service-demo
 inferdoctor template validate ./customer-service-demo
 inferdoctor template smoke-test ./customer-service-demo
-inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model
-inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b
+inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model --runs 2 --warmup 1
+inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b --streaming
 inferdoctor optimize rag --top-k 8 --ttft 2.5 --streaming
 ```
 
@@ -78,12 +79,12 @@ Reachable endpoints are not enough. Local AI apps also need acceptable user expe
 
 ```bash
 inferdoctor perf endpoint --endpoint http://127.0.0.1:8000/v1 --model local-model
-inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model
-inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b
+inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model --runs 2 --warmup 1
+inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b --streaming
 inferdoctor optimize rag --top-k 8 --ttft 2.5 --streaming
 ```
 
-These are smoke tests and heuristic suggestions, not formal benchmarks. InferDoctor does not download models, start runtimes, run long load tests, or modify system settings.
+These are smoke tests and heuristic suggestions, not formal benchmarks. InferDoctor does not download models, start runtimes, run long load tests, evaluate model quality, or modify system settings.
 
 
 Model recommendation tools help you choose a model. InferDoctor helps you
@@ -142,6 +143,8 @@ Beginner setup docs and template examples:
 - [`docs/performance/ttft_tps_streaming.md`](docs/performance/ttft_tps_streaming.md)
 - [`docs/performance/rag_latency.md`](docs/performance/rag_latency.md)
 - [`docs/performance/demo_readiness.md`](docs/performance/demo_readiness.md)
+- [`docs/performance/metric_definitions.md`](docs/performance/metric_definitions.md)
+- [`docs/performance/customer_experience_checklist.md`](docs/performance/customer_experience_checklist.md)
 
 ## From Broken Stack to Working App
 
