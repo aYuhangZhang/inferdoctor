@@ -16,6 +16,7 @@ from inferdoctor.core.config import (
 )
 from inferdoctor.core.explain import explain_topics, render_explanation
 from inferdoctor.core.model_fit import estimate_model_fit, render_model_fit
+from inferdoctor.core.optimize import advise_endpoint, advise_rag, render_optimization_report
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
 from inferdoctor.core.perf import render_perf_result, run_endpoint_smoke, run_streaming_smoke
@@ -166,6 +167,43 @@ def _parser() -> argparse.ArgumentParser:
         choices=("ollama", "vllm"),
         help="Runtime overhead heuristic",
     )
+
+    optimize = subparsers.add_parser(
+        "optimize",
+        help="Get practical local AI performance optimization advice",
+        description="Advice-only helpers for endpoint and RAG user experience. No inference is run.",
+    )
+    optimize_subparsers = optimize.add_subparsers(dest="optimize_command", required=True)
+    optimize_endpoint = optimize_subparsers.add_parser(
+        "endpoint",
+        help="Suggest endpoint UX optimizations from supplied metrics",
+        description="Analyze supplied runtime, hardware, TTFT, TPS, latency, and streaming hints. This command does not call endpoints.",
+        epilog="Examples: inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b --quant q4 | inferdoctor optimize endpoint --runtime ollama --streaming --ttft 1.5 --tps 40",
+    )
+    optimize_endpoint.add_argument("--runtime", choices=("ollama", "vllm", "sglang", "openai-compatible"), default="openai-compatible")
+    optimize_endpoint.add_argument("--vram", type=_positive_float, help="Available VRAM in GiB")
+    optimize_endpoint.add_argument("--model-size", type=_model_size, help="Model size class such as 7b, 14b, or 32b")
+    optimize_endpoint.add_argument("--quant", choices=("q4", "q8", "fp16"), help="Quantization or precision hint")
+    optimize_endpoint.add_argument("--streaming", action="store_true", help="Whether the app already streams tokens to users")
+    optimize_endpoint.add_argument("--ttft", type=_positive_float, help="Observed time to first token in seconds")
+    optimize_endpoint.add_argument("--tps", type=_positive_float, help="Observed rough output tokens per second")
+    optimize_endpoint.add_argument("--latency", type=_positive_float, help="Observed total response latency in seconds")
+    optimize_rag = optimize_subparsers.add_parser(
+        "rag",
+        help="Suggest RAG user-experience optimizations",
+        description="Advice-only RAG latency helper. It does not run retrieval, embeddings, rerankers, or inference.",
+        epilog="Examples: inferdoctor optimize rag --top-k 8 --ttft 2.5 --streaming | inferdoctor optimize rag --retrieval-ms 900 --rerank-ms 1500 --top-k 12",
+    )
+    optimize_rag.add_argument("--docs", type=int, help="Approximate document count")
+    optimize_rag.add_argument("--chunks", type=int, help="Approximate chunk count")
+    optimize_rag.add_argument("--top-k", type=int, help="Chunks sent to generation")
+    optimize_rag.add_argument("--rerank", action="store_true", help="Whether a reranker is used")
+    optimize_rag.add_argument("--retrieval-ms", type=_positive_float, help="Observed retrieval latency in milliseconds")
+    optimize_rag.add_argument("--rerank-ms", type=_positive_float, help="Observed rerank latency in milliseconds")
+    optimize_rag.add_argument("--ttft", type=_positive_float, help="Observed time to first token in seconds")
+    optimize_rag.add_argument("--streaming", action="store_true", help="Whether the app streams tokens to users")
+    optimize_rag.add_argument("--model-size", type=_model_size, help="Model size class such as 7b, 14b, or 32b")
+    optimize_rag.add_argument("--vram", type=_positive_float, help="Available VRAM in GiB")
 
     perf = subparsers.add_parser(
         "perf",
@@ -575,6 +613,34 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "explain":
         print(render_explanation(args.topic))
         return 0
+    if args.command == "optimize":
+        if args.optimize_command == "endpoint":
+            print(render_optimization_report(advise_endpoint(
+                runtime=args.runtime,
+                vram_gib=args.vram,
+                model_size=args.model_size,
+                quant=args.quant,
+                streaming=args.streaming,
+                ttft=args.ttft,
+                tps=args.tps,
+                latency=args.latency,
+            )))
+            return 0
+        if args.optimize_command == "rag":
+            print(render_optimization_report(advise_rag(
+                docs=args.docs,
+                chunks=args.chunks,
+                top_k=args.top_k,
+                rerank=args.rerank,
+                retrieval_ms=args.retrieval_ms,
+                rerank_ms=args.rerank_ms,
+                ttft=args.ttft,
+                streaming=args.streaming,
+                model_size=args.model_size,
+                vram_gib=args.vram,
+            )))
+            return 0
+
     if args.command == "perf":
         if args.perf_command == "endpoint":
             print(render_perf_result(run_endpoint_smoke(args.endpoint, args.model, args.timeout)))
