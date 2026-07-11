@@ -253,6 +253,11 @@ def advise_rag(
     rerank: bool = False,
     retrieval_ms: Optional[float] = None,
     rerank_ms: Optional[float] = None,
+    embedding_ms: Optional[float] = None,
+    filter_ms: Optional[float] = None,
+    doc_load_ms: Optional[float] = None,
+    context_build_ms: Optional[float] = None,
+    generation_ms: Optional[float] = None,
     ttft: Optional[float] = None,
     streaming: bool = False,
     model_size: Optional[str] = None,
@@ -265,6 +270,11 @@ def advise_rag(
         "Rerank: {0}".format("enabled" if rerank else "not provided / disabled"),
         "Retrieval latency: {0}".format(_fmt(retrieval_ms, "ms")),
         "Rerank latency: {0}".format(_fmt(rerank_ms, "ms")),
+        "Embedding/query encoding latency: {0}".format(_fmt(embedding_ms, "ms")),
+        "Metadata filtering latency: {0}".format(_fmt(filter_ms, "ms")),
+        "Document loading latency: {0}".format(_fmt(doc_load_ms, "ms")),
+        "Context assembly latency: {0}".format(_fmt(context_build_ms, "ms")),
+        "Generation completion latency: {0}".format(_fmt(generation_ms, "ms")),
         "Observed TTFT: {0}".format(_fmt(ttft, "s")),
         "Streaming: {0}".format("enabled" if streaming else "not provided / possibly disabled"),
         "Model size: {0}".format(model_size or "not provided"),
@@ -273,35 +283,58 @@ def advise_rag(
     bottlenecks: List[str] = []
     quick_wins: List[str] = []
 
+    stages = {
+        "query preprocessing / embedding": embedding_ms,
+        "vector retrieval": retrieval_ms,
+        "metadata filtering": filter_ms,
+        "rerank": rerank_ms,
+        "document loading": doc_load_ms,
+        "context assembly": context_build_ms,
+        "LLM TTFT": (ttft * 1000 if ttft is not None else None),
+        "streamed generation / completion": generation_ms,
+    }
+    provided_stages = {name: value for name, value in stages.items() if value is not None}
+    if provided_stages:
+        total_ms = sum(provided_stages.values())
+        if total_ms > 0:
+            breakdown = ", ".join(
+                "{0} {1:.0f}%".format(name, value * 100 / total_ms)
+                for name, value in sorted(provided_stages.items(), key=lambda item: item[1], reverse=True)
+            )
+            situation.append("Latency budget (user-provided): {0}".format(breakdown))
+            largest_name, largest_value = max(provided_stages.items(), key=lambda item: item[1])
+            bottlenecks.append("{0} is the largest supplied stage at {1:g}ms.".format(largest_name, largest_value))
+            quick_wins.append("Observation: {0} dominates the user-provided latency budget.\nImpact: Users feel this delay before or during answer generation.\nAction: Add stage-level progress messages and optimize this stage first.\nNext: inferdoctor optimize rag --retrieval-ms {1:g} --ttft {2}\nLimitation: These percentages use only values supplied by the user; InferDoctor did not profile the pipeline.".format(largest_name, retrieval_ms or 0, _fmt(ttft) if ttft is not None else "2.5"))
+
     if not streaming:
         bottlenecks.append("Users may see a blank wait during retrieval and generation.")
-        quick_wins.append("Enable SSE/streaming and show retrieval progress before generation starts.")
+        quick_wins.append("Observation: Streaming/progress is not confirmed.\nImpact: Users may see a blank wait during retrieval and generation.\nAction: Enable SSE/streaming and show retrieval progress before generation starts.\nNext: inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model\nLimitation: This command does not verify your frontend progress UI.")
     if retrieval_ms is not None and retrieval_ms > 500:
         bottlenecks.append("Retrieval latency is noticeable before generation begins.")
-        quick_wins.append("Cache embeddings, pre-load the index, and show a 'searching documents' progress event.")
+        quick_wins.append("Observation: Retrieval latency is noticeable.\nImpact: Users wait before the model can start generating.\nAction: Cache embeddings, pre-load the index, and show a searching-documents progress event.\nNext: inferdoctor optimize rag --retrieval-ms {0:g} --streaming\nLimitation: InferDoctor does not inspect your vector database or index.".format(retrieval_ms))
     if rerank or (rerank_ms is not None and rerank_ms > 0):
         if rerank_ms is not None and rerank_ms > 800:
             bottlenecks.append("Reranking is adding significant pre-generation delay.")
-        quick_wins.append("Use rerank only when quality requires it, or rerank fewer candidates for interactive demos.")
+        quick_wins.append("Observation: Reranking is in the request path.\nImpact: Rerank latency delays the first generated token.\nAction: Rerank fewer candidates, make rerank optional, or skip rerank for demos that do not need it.\nNext: inferdoctor optimize rag --rerank-ms {0}\nLimitation: Disabling rerank may reduce answer quality for hard queries.".format(_fmt(rerank_ms, "ms")))
     if top_k is not None and top_k > 6:
         bottlenecks.append("top_k is high; too many chunks can inflate prompt size and hurt TTFT.")
-        quick_wins.append("Start with top_k=4 or top_k=5, then increase only if answer quality needs it.")
+        quick_wins.append("Observation: top_k is high.\nImpact: Too many chunks inflate prompt size, citations, and TTFT.\nAction: Start with top_k=4 or top_k=5, then increase only if answer quality needs it.\nNext: inferdoctor optimize rag --top-k 4 --streaming\nLimitation: Some corpora need higher recall; validate answer quality.")
     if chunks is not None and chunks > 3000:
         bottlenecks.append("Large chunk counts can slow retrieval if the index is not optimized or cached.")
-        quick_wins.append("Check chunking quality and cache the index before demos.")
+        quick_wins.append("Observation: Chunk count is large.\nImpact: Retrieval and duplicate/noisy chunks can slow context construction.\nAction: Check chunk size, deduplicate chunks, cache the index, and avoid too many citations.\nNext: inferdoctor optimize rag --chunks {0} --top-k {1}\nLimitation: Chunk count alone does not prove retrieval is slow.".format(chunks, top_k or 4))
     if ttft is not None and ttft > 2.0:
         bottlenecks.append("Generation TTFT is high after retrieval.")
-        quick_wins.append("Reduce context budget and prompt size; warm up the endpoint before the first customer question.")
+        quick_wins.append("Observation: LLM TTFT is high after retrieval.\nImpact: Users may wait silently after documents are found.\nAction: Reduce context budget and prompt size, warm up the endpoint, and stream generation.\nNext: inferdoctor optimize endpoint --streaming --ttft {0:g}\nLimitation: TTFT depends on runtime cache state, model size, and prompt length.".format(ttft))
     if model_size and vram_gib:
         size_b = _model_size_number(model_size)
         if size_b and size_b >= 14 and vram_gib < 16:
             bottlenecks.append("The generation model may be large for the available VRAM.")
-            quick_wins.append("Use a smaller or more aggressively quantized model for interactive RAG demos.")
+            quick_wins.append("Observation: The generation model may be large for available VRAM.\nImpact: RAG adds context pressure on top of model memory needs.\nAction: Use a smaller or more aggressively quantized model for interactive RAG demos.\nNext: inferdoctor model fit --size {0} --quant q4 --vram {1:g}\nLimitation: This is a heuristic, not a benchmark.".format(model_size, vram_gib))
 
     if not bottlenecks:
         bottlenecks.append("No obvious RAG bottleneck from supplied metrics; measure retrieval and generation separately.")
     if not quick_wins:
-        quick_wins.append("Add timestamps around retrieval, rerank, prompt assembly, TTFT, and total answer latency.")
+        quick_wins.append("Observation: Stage metrics are missing.\nImpact: It is hard to know whether retrieval, rerank, context assembly, or generation is slow.\nAction: Add timestamps around retrieval, rerank, prompt assembly, TTFT, and total answer latency.\nNext: inferdoctor optimize rag --retrieval-ms 700 --ttft 2.5 --streaming\nLimitation: InferDoctor only uses the values you provide.")
 
     next_commands = [
         "inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model",

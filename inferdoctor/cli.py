@@ -225,6 +225,11 @@ def _parser() -> argparse.ArgumentParser:
     optimize_rag.add_argument("--rerank", action="store_true", help="Whether a reranker is used")
     optimize_rag.add_argument("--retrieval-ms", type=_positive_float, help="Observed retrieval latency in milliseconds")
     optimize_rag.add_argument("--rerank-ms", type=_positive_float, help="Observed rerank latency in milliseconds")
+    optimize_rag.add_argument("--embedding-ms", type=_positive_float, help="Observed query embedding/encoding latency in milliseconds")
+    optimize_rag.add_argument("--filter-ms", type=_positive_float, help="Observed metadata filtering latency in milliseconds")
+    optimize_rag.add_argument("--doc-load-ms", type=_positive_float, help="Observed document loading latency in milliseconds")
+    optimize_rag.add_argument("--context-build-ms", type=_positive_float, help="Observed context assembly latency in milliseconds")
+    optimize_rag.add_argument("--generation-ms", type=_positive_float, help="Observed post-TTFT generation completion latency in milliseconds")
     optimize_rag.add_argument("--ttft", type=_positive_float, help="Observed time to first token in seconds")
     optimize_rag.add_argument("--streaming", action="store_true", help="Whether the app streams tokens to users")
     optimize_rag.add_argument("--model-size", type=_model_size, help="Model size class such as 7b, 14b, or 32b")
@@ -689,6 +694,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 rerank=args.rerank,
                 retrieval_ms=args.retrieval_ms,
                 rerank_ms=args.rerank_ms,
+                embedding_ms=args.embedding_ms,
+                filter_ms=args.filter_ms,
+                doc_load_ms=args.doc_load_ms,
+                context_build_ms=args.context_build_ms,
+                generation_ms=args.generation_ms,
                 ttft=args.ttft,
                 streaming=args.streaming,
                 model_size=args.model_size,

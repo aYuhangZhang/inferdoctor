@@ -71,3 +71,34 @@ def test_optimize_endpoint_cpu_fallback_advice():
 
     assert "CPU fallback" in rendered
     assert "inferdoctor check nvidia" in rendered
+
+
+
+def test_optimize_rag_latency_budget_breakdown():
+    rendered = render_optimization_report(
+        advise_rag(
+            embedding_ms=120,
+            retrieval_ms=900,
+            filter_ms=80,
+            rerank_ms=1500,
+            doc_load_ms=200,
+            context_build_ms=300,
+            generation_ms=1800,
+            top_k=8,
+            ttft=2.5,
+            streaming=True,
+        )
+    )
+
+    assert "Latency budget (user-provided)" in rendered
+    assert "streamed generation / completion" in rendered
+    assert "top_k is high" in rendered
+    assert "Limitation:" in rendered
+
+
+def test_optimize_rag_partial_metrics_are_useful():
+    rendered = render_optimization_report(advise_rag(retrieval_ms=700))
+
+    assert "Retrieval latency" in rendered
+    assert "searching-documents progress" in rendered
+    assert "InferDoctor did not profile" in rendered or "does not inspect" in rendered
