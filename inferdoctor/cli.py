@@ -17,6 +17,7 @@ from inferdoctor.core.config import (
 from inferdoctor.core.explain import explain_topics, render_explanation
 from inferdoctor.core.model_fit import estimate_model_fit, render_model_fit
 from inferdoctor.core.optimize import advise_endpoint, advise_rag, render_optimization_report
+from inferdoctor.core.optimization_plan import build_optimization_plan, render_optimization_plan
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
 from inferdoctor.core.perf import render_perf_json, render_perf_markdown, render_perf_result, run_endpoint_smoke, run_streaming_smoke
@@ -255,6 +256,28 @@ def _parser() -> argparse.ArgumentParser:
     optimize_rag.add_argument("--streaming", action="store_true", help="Whether the app streams tokens to users")
     optimize_rag.add_argument("--model-size", type=_model_size, help="Model size class such as 7b, 14b, or 32b")
     optimize_rag.add_argument("--vram", type=_positive_float, help="Available VRAM in GiB")
+    optimize_plan = optimize_subparsers.add_parser(
+        "plan",
+        help="Generate an actionable optimization plan",
+        description=(
+            "Turn performance reports, comparisons, and supplied runtime facts into prioritized next steps. "
+            "This command is advice-only and does not call endpoints."
+        ),
+        epilog="Examples: inferdoctor optimize plan --report perf.json | inferdoctor optimize plan --baseline before.json --candidate after.json --format markdown",
+    )
+    optimize_plan.add_argument("--report", help="Performance report or saved baseline JSON to analyze")
+    optimize_plan.add_argument("--baseline", help="Baseline JSON path or saved baseline name")
+    optimize_plan.add_argument("--candidate", help="Candidate JSON path or saved baseline name")
+    optimize_plan.add_argument("--runtime", choices=("ollama", "vllm", "sglang", "openai-compatible"), help="Runtime hint")
+    optimize_plan.add_argument("--model-size", type=_model_size, help="Model size class such as 7b, 14b, or 32b")
+    optimize_plan.add_argument("--vram", type=_positive_float, help="Available VRAM in GiB")
+    optimize_plan.add_argument("--goal", choices=GOALS, help="Application goal")
+    optimize_plan.add_argument("--streaming", action="store_true", help="Whether the app is intended to stream output")
+    optimize_plan.add_argument("--retrieval-ms", type=_positive_float, help="User-provided retrieval latency in milliseconds")
+    optimize_plan.add_argument("--rerank-ms", type=_positive_float, help="User-provided rerank latency in milliseconds")
+    optimize_plan.add_argument("--ttft", type=_positive_float, help="Observed TTFT in seconds")
+    optimize_plan.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
+    optimize_plan.add_argument("--output", help="Write plan output to this file")
 
     perf = subparsers.add_parser(
         "perf",
@@ -784,6 +807,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 model_size=args.model_size,
                 vram_gib=args.vram,
             )))
+            return 0
+        if args.optimize_command == "plan":
+            if (args.baseline and not args.candidate) or (args.candidate and not args.baseline):
+                print("inferdoctor: optimize plan requires both --baseline and --candidate when comparing", file=sys.stderr)
+                return 2
+            try:
+                plan = build_optimization_plan(
+                    report_path=args.report,
+                    baseline_path=args.baseline,
+                    candidate_path=args.candidate,
+                    runtime=args.runtime,
+                    model_size=args.model_size,
+                    vram_gib=args.vram,
+                    goal=args.goal,
+                    streaming=args.streaming,
+                    retrieval_ms=args.retrieval_ms,
+                    rerank_ms=args.rerank_ms,
+                    ttft=args.ttft,
+                )
+            except ValueError as exc:
+                print("inferdoctor: {0}".format(exc), file=sys.stderr)
+                return 2
+            _emit_output(render_optimization_plan(plan, args.format), args.output)
             return 0
 
     if args.command == "perf":
