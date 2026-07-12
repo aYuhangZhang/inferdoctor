@@ -77,7 +77,7 @@ For a LAN/private endpoint you control, add `--allow-non-local` to `inferdoctor 
 ├── config.yaml
 ├── .env.example
 ├── data/faq.md
-└── prompts/system_prompt.md
+└── prompts/system_instructions.md
 ```
 
 ## Limitations

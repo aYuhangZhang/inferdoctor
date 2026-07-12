@@ -129,7 +129,7 @@ def read_stream(response) -> str:
 
 def ask(message: str, config: dict[str, object]) -> str:
     context = faq_context(config)
-    system_prompt = (ROOT / "prompts" / "system_prompt.md").read_text(encoding="utf-8")
+    system_prompt = (ROOT / "prompts" / "system_instructions.md").read_text(encoding="utf-8")
     payload = {
         "model": config["model"],
         "messages": [

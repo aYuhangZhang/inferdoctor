@@ -47,3 +47,4 @@ def test_customer_service_reference_app_docs_include_performance_loop():
     assert "--allow-non-local" in readme
     assert "streaming: true" in config
     assert "LOCAL_AI_STREAMING=true" in env_example
+    assert (CUSTOMER_SERVICE / "prompts" / "system_instructions.md").exists()
