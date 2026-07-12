@@ -15,6 +15,13 @@ from inferdoctor.core.config import (
     normalize_endpoint,
 )
 from inferdoctor.core.explain import explain_topics, render_explanation
+from inferdoctor.core.experience import (
+    apply_profile_to_optimization_report,
+    apply_profile_to_perf_result,
+    get_profile,
+    profile_names,
+    render_profile as render_experience_profile,
+)
 from inferdoctor.core.model_fit import estimate_model_fit, render_model_fit
 from inferdoctor.core.optimize import advise_endpoint, advise_rag, render_optimization_report
 from inferdoctor.core.optimization_plan import build_optimization_plan, render_optimization_plan
@@ -235,6 +242,7 @@ def _parser() -> argparse.ArgumentParser:
     optimize_endpoint.add_argument("--docker", action="store_true", help="Whether Docker is involved in the endpoint path")
     optimize_endpoint.add_argument("--cold-start", action="store_true", help="Whether the first request is noticeably slower")
     optimize_endpoint.add_argument("--cpu-fallback-suspected", action="store_true", help="Whether runtime logs or behavior suggest CPU fallback")
+    optimize_endpoint.add_argument("--profile", choices=profile_names(), help="Application experience profile for advice context")
     optimize_rag = optimize_subparsers.add_parser(
         "rag",
         help="Suggest RAG user-experience optimizations",
@@ -256,6 +264,7 @@ def _parser() -> argparse.ArgumentParser:
     optimize_rag.add_argument("--streaming", action="store_true", help="Whether the app streams tokens to users")
     optimize_rag.add_argument("--model-size", type=_model_size, help="Model size class such as 7b, 14b, or 32b")
     optimize_rag.add_argument("--vram", type=_positive_float, help="Available VRAM in GiB")
+    optimize_rag.add_argument("--profile", choices=profile_names(), help="Application experience profile for RAG UX context")
     optimize_plan = optimize_subparsers.add_parser(
         "plan",
         help="Generate an actionable optimization plan",
@@ -276,6 +285,7 @@ def _parser() -> argparse.ArgumentParser:
     optimize_plan.add_argument("--retrieval-ms", type=_positive_float, help="User-provided retrieval latency in milliseconds")
     optimize_plan.add_argument("--rerank-ms", type=_positive_float, help="User-provided rerank latency in milliseconds")
     optimize_plan.add_argument("--ttft", type=_positive_float, help="Observed TTFT in seconds")
+    optimize_plan.add_argument("--profile", choices=profile_names(), help="Application experience profile for optimization priorities")
     optimize_plan.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
     optimize_plan.add_argument("--output", help="Write plan output to this file")
 
@@ -304,6 +314,7 @@ def _parser() -> argparse.ArgumentParser:
     perf_endpoint.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
     perf_endpoint.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
     perf_endpoint.add_argument("--output", help="Write report to a file instead of stdout")
+    perf_endpoint.add_argument("--profile", choices=profile_names(), help="Application experience profile for readiness guidance")
     perf_streaming = perf_subparsers.add_parser(
         "streaming",
         help="Smoke-test streaming TTFT for an OpenAI-compatible endpoint",
@@ -320,6 +331,7 @@ def _parser() -> argparse.ArgumentParser:
     perf_streaming.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
     perf_streaming.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
     perf_streaming.add_argument("--output", help="Write report to a file instead of stdout")
+    perf_streaming.add_argument("--profile", choices=profile_names(), help="Application experience profile for readiness guidance")
 
     perf_compare = perf_subparsers.add_parser(
         "compare",
@@ -374,6 +386,19 @@ def _parser() -> argparse.ArgumentParser:
     )
     baseline_delete.add_argument("baseline", help="Baseline name or JSON path")
     baseline_delete.add_argument("--yes", action="store_true", help="Confirm deletion")
+
+    experience = subparsers.add_parser(
+        "experience",
+        help="Explain local AI user-experience profiles",
+        description="Show what matters for a specific local AI application goal.",
+    )
+    experience_subparsers = experience.add_subparsers(dest="experience_command", required=True)
+    experience_profile = experience_subparsers.add_parser(
+        "profile",
+        help="Show an application experience profile",
+        epilog="Example: inferdoctor experience profile customer-service",
+    )
+    experience_profile.add_argument("name", choices=profile_names(), help="Experience profile name")
 
     report = subparsers.add_parser(
         "report",
@@ -770,9 +795,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if args.command == "explain":
         print(render_explanation(args.topic))
         return 0
+    if args.command == "experience":
+        if args.experience_command == "profile":
+            print(render_experience_profile(get_profile(args.name)))
+            return 0
     if args.command == "optimize":
         if args.optimize_command == "endpoint":
-            print(render_optimization_report(advise_endpoint(
+            print(render_optimization_report(apply_profile_to_optimization_report(advise_endpoint(
                 runtime=args.runtime,
                 vram_gib=args.vram,
                 model_size=args.model_size,
@@ -787,10 +816,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 docker=args.docker,
                 cold_start=args.cold_start,
                 cpu_fallback_suspected=args.cpu_fallback_suspected,
-            )))
+            ), args.profile)))
             return 0
         if args.optimize_command == "rag":
-            print(render_optimization_report(advise_rag(
+            print(render_optimization_report(apply_profile_to_optimization_report(advise_rag(
                 docs=args.docs,
                 chunks=args.chunks,
                 top_k=args.top_k,
@@ -806,7 +835,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 streaming=args.streaming,
                 model_size=args.model_size,
                 vram_gib=args.vram,
-            )))
+            ), args.profile)))
             return 0
         if args.optimize_command == "plan":
             if (args.baseline and not args.candidate) or (args.candidate and not args.baseline):
@@ -825,6 +854,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     retrieval_ms=args.retrieval_ms,
                     rerank_ms=args.rerank_ms,
                     ttft=args.ttft,
+                    profile=args.profile,
                 )
             except ValueError as exc:
                 print("inferdoctor: {0}".format(exc), file=sys.stderr)
@@ -834,11 +864,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "perf":
         if args.perf_command == "endpoint":
-            result = run_endpoint_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)
+            result = apply_profile_to_perf_result(run_endpoint_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup), args.profile)
             _emit_output(_render_perf_output(result, args.format), args.output)
             return 0
         if args.perf_command == "streaming":
-            result = run_streaming_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)
+            result = apply_profile_to_perf_result(run_streaming_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup), args.profile)
             _emit_output(_render_perf_output(result, args.format), args.output)
             return 0
         if args.perf_command == "compare":

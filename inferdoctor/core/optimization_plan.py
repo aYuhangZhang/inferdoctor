@@ -4,6 +4,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from inferdoctor.core.experience import get_profile, profile_summary
+
 from inferdoctor.core.perf_baseline import load_report_or_baseline
 from inferdoctor.core.perf_compare import compare_performance_files
 
@@ -79,6 +81,7 @@ def build_optimization_plan(
     retrieval_ms: Optional[float] = None,
     rerank_ms: Optional[float] = None,
     ttft: Optional[float] = None,
+    profile: Optional[str] = None,
 ) -> Dict[str, Any]:
     observations: List[str] = []
     actions: List[Dict[str, str]] = []
@@ -93,6 +96,7 @@ def build_optimization_plan(
         "vram_gib": vram_gib,
         "goal": goal,
         "streaming_preferred": streaming,
+        "experience_profile": profile,
         "user_provided_metrics": {
             "retrieval_ms": retrieval_ms,
             "rerank_ms": rerank_ms,
@@ -132,6 +136,19 @@ def build_optimization_plan(
                 observations.append("Readiness category: {0}.".format(report.get("readiness_category")))
     else:
         observations.append("No performance report or comparison was provided; using supplied hints only.")
+
+    selected_profile = get_profile(profile)
+    if selected_profile:
+        observations.append(profile_summary(selected_profile))
+        _append_unique(
+            actions,
+            "Do now",
+            "Application profile is {0}.".format(selected_profile.title),
+            selected_profile.progress_feedback[0],
+            selected_profile.checks[0],
+            selected_profile.heuristic_ranges[0],
+            "Experience profile ranges are heuristics, not universal SLA guarantees.",
+        )
 
     if not streaming:
         _append_unique(actions, "Do now", "Streaming is not confirmed or not requested.", "Enable streaming in the app and validate time to first visible content.", "inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model", "Usually improves perceived latency for chat and RAG apps.", "The smoke test cannot verify whether your frontend renders chunks progressively.")
