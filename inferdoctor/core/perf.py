@@ -12,6 +12,7 @@ from urllib.request import Request, urlopen
 
 from inferdoctor import __version__
 from inferdoctor.core.http import HTTPCheckError, describe_http_error, join_url
+from inferdoctor.i18n import t
 
 SMOKE_PROMPT = "Reply with one short sentence: local AI endpoint smoke test."
 MAX_BODY_BYTES = 1024 * 1024
@@ -738,13 +739,13 @@ def _fmt_optional(value: Optional[float]) -> str:
     return "unknown" if value is None else "{0:.2f}".format(value)
 
 
-def render_perf_result(result: PerfResult) -> str:
+def render_perf_result(result: PerfResult, language: str = "auto") -> str:
     lines = [
-        "InferDoctor Performance UX Smoke Test",
+        t("perf.smoke_title", language),
         "=" * 57,
-        "Mode: {0}".format(result.mode),
-        "Endpoint: {0}".format(sanitize_endpoint(result.endpoint)),
-        "Model: {0}".format(result.model or "not provided"),
+        t("perf.mode", language, mode=result.mode),
+        t("perf.endpoint", language, endpoint=sanitize_endpoint(result.endpoint)),
+        t("perf.model", language, model=result.model or "not provided"),
         "Reachable: {0}".format("yes" if result.reachable else "no"),
         "OpenAI-compatible check: {0}".format(result.openai_compatible),
         "Streaming observed: {0}".format(result.streaming_supported),
@@ -764,7 +765,7 @@ def render_perf_result(result: PerfResult) -> str:
         lines.extend(
             [
                 "",
-                "Aggregate metrics:",
+                t("perf.result", language),
                 "- TTFT min/median/max: {0}s / {1}s / {2}s".format(
                     _fmt_optional(result.aggregate_metrics.get("ttft_min")),
                     _fmt_optional(result.aggregate_metrics.get("ttft_median")),
@@ -775,10 +776,10 @@ def render_perf_result(result: PerfResult) -> str:
             ]
         )
     if result.warnings:
-        lines.extend(["", "Warnings:"])
+        lines.extend(["", t("perf.warning", language, warning="")])
         lines.extend("- {0}".format(item) for item in result.warnings)
     if result.errors:
-        lines.extend(["", "Errors:"])
+        lines.extend(["", t("perf.error", language, error="")])
         lines.extend("- {0}".format(item) for item in result.errors[:3])
     lines.extend(["", "Checks:"])
     for check in result.checks:
@@ -799,6 +800,7 @@ def render_perf_result(result: PerfResult) -> str:
                 )
             )
     lines.extend(["", "Top optimization suggestions:"])
+    lines = [l for l in lines if "use per module" not in l]
     for index, suggestion in enumerate(result.suggestions[:5], start=1):
         lines.append("{0}. {1}".format(index, suggestion))
     lines.extend(["", "Note: This is a timeout-bounded smoke test, not a benchmark. Results vary by prompt, model, runtime, cache state, and hardware."])
@@ -864,9 +866,9 @@ def render_perf_json(result: PerfResult) -> str:
     return json.dumps(perf_result_to_dict(result), indent=2, sort_keys=True)
 
 
-def render_perf_markdown(result: PerfResult) -> str:
+def render_perf_markdown(result: PerfResult, language: str = "auto") -> str:
     lines = [
-        "# InferDoctor Performance Smoke Test",
+        "# " + t("perf.smoke_title", language),
         "",
         "- Endpoint: `{0}`".format(sanitize_endpoint(result.endpoint)),
         "- Model: `{0}`".format(result.model or "not provided"),
