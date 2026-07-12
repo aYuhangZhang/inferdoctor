@@ -98,6 +98,8 @@ inferdoctor check --language en
 
 Supported values are `auto`, `en`, `zh`, and `ja`. `auto` follows the local environment when it can be detected. Other commands, generated templates, JSON schemas, Markdown reports, and structured field names may remain English in this first i18n release so scripts and issue reports stay stable. Unsupported language values are rejected instead of silently falling back.
 
+See [Internationalization](docs/i18n.md) for current scope and contribution notes.
+
 
 Model recommendation tools help you choose a model. InferDoctor helps you
 understand why your local AI stack is broken and what a practical next setup
