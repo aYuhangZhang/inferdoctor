@@ -20,6 +20,15 @@ from inferdoctor.core.optimize import advise_endpoint, advise_rag, render_optimi
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
 from inferdoctor.core.perf import render_perf_json, render_perf_markdown, render_perf_result, run_endpoint_smoke, run_streaming_smoke
+from inferdoctor.core.perf_baseline import (
+    create_baseline_from_report_file,
+    delete_baseline,
+    list_baselines,
+    load_report_or_baseline,
+    render_baseline_list,
+    render_baseline_markdown,
+    render_baseline_summary,
+)
 from inferdoctor.core.recommendations import recommend_stack, render_recommendation
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
@@ -287,6 +296,45 @@ def _parser() -> argparse.ArgumentParser:
     perf_streaming.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
     perf_streaming.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
     perf_streaming.add_argument("--output", help="Write report to a file instead of stdout")
+
+    perf_baseline = perf_subparsers.add_parser(
+        "baseline",
+        help="Save, inspect, and delete sanitized performance baselines",
+        description=(
+            "Manage user-local performance smoke-test baselines. Baselines store sanitized metrics, "
+            "not response text, API keys, or authorization headers."
+        ),
+    )
+    baseline_subparsers = perf_baseline.add_subparsers(dest="baseline_command", required=True)
+    baseline_create = baseline_subparsers.add_parser(
+        "create",
+        help="Create a sanitized baseline from a performance JSON report",
+        epilog="Example: inferdoctor perf baseline create --report perf.json --name before",
+    )
+    baseline_create.add_argument("--report", required=True, help="Performance JSON report created by inferdoctor perf endpoint/streaming")
+    baseline_create.add_argument("--name", help="Human-friendly baseline name; used for user-local storage")
+    baseline_create.add_argument("--runtime", help="Runtime label such as ollama, vllm, sglang, or lmstudio")
+    baseline_create.add_argument("--output", help="Write baseline JSON to this path instead of the user-local baseline directory")
+    baseline_show = baseline_subparsers.add_parser(
+        "show",
+        help="Show a baseline by name or JSON path",
+        epilog="Example: inferdoctor perf baseline show before --format markdown",
+    )
+    baseline_show.add_argument("baseline", help="Baseline name or JSON path")
+    baseline_show.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
+    baseline_show.add_argument("--output", help="Write rendered baseline output to this file")
+    baseline_subparsers.add_parser(
+        "list",
+        help="List user-local performance baselines",
+        epilog="Example: inferdoctor perf baseline list",
+    )
+    baseline_delete = baseline_subparsers.add_parser(
+        "delete",
+        help="Delete a user-local baseline by name or path",
+        epilog="Example: inferdoctor perf baseline delete before --yes",
+    )
+    baseline_delete.add_argument("baseline", help="Baseline name or JSON path")
+    baseline_delete.add_argument("--yes", action="store_true", help="Confirm deletion")
 
     report = subparsers.add_parser(
         "report",
@@ -731,6 +779,42 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             result = run_streaming_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)
             _emit_output(_render_perf_output(result, args.format), args.output)
             return 0
+        if args.perf_command == "baseline":
+            try:
+                if args.baseline_command == "create":
+                    baseline, path = create_baseline_from_report_file(
+                        args.report,
+                        name=args.name,
+                        runtime=args.runtime,
+                        output=args.output,
+                    )
+                    print(render_baseline_summary(baseline, path))
+                    return 0
+                if args.baseline_command == "show":
+                    baseline = load_report_or_baseline(args.baseline)
+                    if args.format == "json":
+                        import json
+
+                        rendered = json.dumps(baseline, indent=2, sort_keys=True)
+                    elif args.format == "markdown":
+                        rendered = render_baseline_markdown(baseline, args.baseline)
+                    else:
+                        rendered = render_baseline_summary(baseline, args.baseline)
+                    _emit_output(rendered, args.output)
+                    return 0
+                if args.baseline_command == "list":
+                    print(render_baseline_list(list_baselines()))
+                    return 0
+                if args.baseline_command == "delete":
+                    if not args.yes:
+                        print("inferdoctor: refusing to delete baseline without --yes", file=sys.stderr)
+                        return 2
+                    deleted = delete_baseline(args.baseline)
+                    print("Deleted performance baseline: {0}".format(deleted))
+                    return 0
+            except ValueError as exc:
+                print("inferdoctor: {0}".format(exc), file=sys.stderr)
+                return 2
 
     if args.command == "recommend":
         print(
