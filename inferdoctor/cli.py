@@ -16,15 +16,19 @@ from inferdoctor.core.config import (
 )
 from inferdoctor.core.explain import explain_topics, render_explanation
 from inferdoctor.core.model_fit import estimate_model_fit, render_model_fit
+from inferdoctor.core.optimize import advise_endpoint, advise_rag, render_optimization_report
 from inferdoctor.core.models import CheckResult, Status
 from inferdoctor.core.profile import render_profile_json, render_profile_markdown
+from inferdoctor.core.perf import render_perf_json, render_perf_markdown, render_perf_result, run_endpoint_smoke, run_streaming_smoke
 from inferdoctor.core.recommendations import recommend_stack, render_recommendation
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
 from inferdoctor.core.stack_plan import (
     build_stack_bootstrap_plan,
+    create_stack_bootstrap_project,
     build_stack_plan,
+    render_stack_bootstrap_files,
     render_stack_bootstrap_plan,
     render_stack_plan,
 )
@@ -35,10 +39,14 @@ from inferdoctor.core.template_validation import (
     validate_template_project,
 )
 from inferdoctor.core.templates import (
+    compose_template_names,
+    create_compose_project,
     create_template_project,
+    render_compose_create_summary,
     render_template_create_summary,
     render_template_detail,
     render_template_list,
+    render_template_registry,
     template_names,
 )
 from inferdoctor.reporters import render_dashboard, render_json, render_markdown
@@ -66,13 +74,46 @@ def _positive_float(value: str) -> float:
     return parsed
 
 
-def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
+
+def _bounded_int(value: str, minimum: int, maximum: int, label: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("{0} must be an integer".format(label)) from exc
+    if parsed < minimum or parsed > maximum:
+        raise argparse.ArgumentTypeError("{0} must be between {1} and {2}".format(label, minimum, maximum))
+    return parsed
+
+
+def _perf_runs(value: str) -> int:
+    return _bounded_int(value, 1, 3, "--runs")
+
+
+def _perf_warmup(value: str) -> int:
+    return _bounded_int(value, 0, 1, "--warmup")
+
+
+def _add_language_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--language",
+        choices=("auto", "en", "zh", "ja"),
+        default=None,
+        help=(
+            "Output language for the health dashboard and console summary. "
+            "Other commands may remain English in this first i18n release; auto follows the system locale."
+        ),
+    )
+
+
+def _add_runtime_options(parser: argparse.ArgumentParser, *, include_language: bool = True) -> None:
     parser.add_argument("--config", help="Path to a JSON or simple YAML config")
     parser.add_argument(
         "--timeout",
         type=_positive_float,
         help="HTTP timeout in seconds; overrides the config value",
     )
+    if include_language:
+        _add_language_option(parser)
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -87,6 +128,15 @@ def _parser() -> argparse.ArgumentParser:
         epilog=(
             "Start here: inferdoctor | inferdoctor recommend --goal customer-service | "
             "inferdoctor template create customer-service --output ./customer-service-demo | inferdoctor template smoke-test ./customer-service-demo"
+        ),
+    )
+    parser.add_argument(
+        "--language",
+        choices=("auto", "en", "zh", "ja"),
+        default=None,
+        help=(
+            "Output language for the health dashboard and console summary. "
+            "Other commands may remain English in this first i18n release; auto follows the system locale."
         ),
     )
     parser.add_argument("--version", action="version", version=__version__)
@@ -148,6 +198,96 @@ def _parser() -> argparse.ArgumentParser:
         help="Runtime overhead heuristic",
     )
 
+    optimize = subparsers.add_parser(
+        "optimize",
+        help="Get practical local AI performance optimization advice",
+        description="Advice-only helpers for endpoint and RAG user experience. No inference is run.",
+    )
+    optimize_subparsers = optimize.add_subparsers(dest="optimize_command", required=True)
+    optimize_endpoint = optimize_subparsers.add_parser(
+        "endpoint",
+        help="Suggest endpoint UX optimizations from supplied metrics",
+        description="Analyze supplied runtime, hardware, TTFT, TPS, latency, and streaming hints. This command does not call endpoints.",
+        epilog="Examples: inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b --quant q4 | inferdoctor optimize endpoint --runtime ollama --streaming --ttft 1.5 --tps 40",
+    )
+    optimize_endpoint.add_argument("--runtime", choices=("ollama", "vllm", "sglang", "openai-compatible"), default="openai-compatible")
+    optimize_endpoint.add_argument("--vram", type=_positive_float, help="Available VRAM in GiB")
+    optimize_endpoint.add_argument("--model-size", type=_model_size, help="Model size class such as 7b, 14b, or 32b")
+    optimize_endpoint.add_argument("--quant", choices=("q4", "q8", "fp16"), help="Quantization or precision hint")
+    optimize_endpoint.add_argument("--streaming", action="store_true", help="Whether the app already streams tokens to users")
+    optimize_endpoint.add_argument("--ttft", type=_positive_float, help="Observed time to first token in seconds")
+    optimize_endpoint.add_argument("--tps", type=_positive_float, help="Observed rough output tokens per second")
+    optimize_endpoint.add_argument("--latency", type=_positive_float, help="Observed total response latency in seconds")
+    optimize_endpoint.add_argument("--context-tokens", type=int, help="Approximate prompt/context tokens")
+    optimize_endpoint.add_argument("--ttft-variance", type=_positive_float, help="Observed TTFT max/min ratio across runs")
+    optimize_endpoint.add_argument("--containerized", action="store_true", help="Whether the app/runtime is containerized")
+    optimize_endpoint.add_argument("--docker", action="store_true", help="Whether Docker is involved in the endpoint path")
+    optimize_endpoint.add_argument("--cold-start", action="store_true", help="Whether the first request is noticeably slower")
+    optimize_endpoint.add_argument("--cpu-fallback-suspected", action="store_true", help="Whether runtime logs or behavior suggest CPU fallback")
+    optimize_rag = optimize_subparsers.add_parser(
+        "rag",
+        help="Suggest RAG user-experience optimizations",
+        description="Advice-only RAG latency helper. It does not run retrieval, embeddings, rerankers, or inference.",
+        epilog="Examples: inferdoctor optimize rag --top-k 8 --ttft 2.5 --streaming | inferdoctor optimize rag --retrieval-ms 900 --rerank-ms 1500 --top-k 12",
+    )
+    optimize_rag.add_argument("--docs", type=int, help="Approximate document count")
+    optimize_rag.add_argument("--chunks", type=int, help="Approximate chunk count")
+    optimize_rag.add_argument("--top-k", type=int, help="Chunks sent to generation")
+    optimize_rag.add_argument("--rerank", action="store_true", help="Whether a reranker is used")
+    optimize_rag.add_argument("--retrieval-ms", type=_positive_float, help="Observed retrieval latency in milliseconds")
+    optimize_rag.add_argument("--rerank-ms", type=_positive_float, help="Observed rerank latency in milliseconds")
+    optimize_rag.add_argument("--embedding-ms", type=_positive_float, help="Observed query embedding/encoding latency in milliseconds")
+    optimize_rag.add_argument("--filter-ms", type=_positive_float, help="Observed metadata filtering latency in milliseconds")
+    optimize_rag.add_argument("--doc-load-ms", type=_positive_float, help="Observed document loading latency in milliseconds")
+    optimize_rag.add_argument("--context-build-ms", type=_positive_float, help="Observed context assembly latency in milliseconds")
+    optimize_rag.add_argument("--generation-ms", type=_positive_float, help="Observed post-TTFT generation completion latency in milliseconds")
+    optimize_rag.add_argument("--ttft", type=_positive_float, help="Observed time to first token in seconds")
+    optimize_rag.add_argument("--streaming", action="store_true", help="Whether the app streams tokens to users")
+    optimize_rag.add_argument("--model-size", type=_model_size, help="Model size class such as 7b, 14b, or 32b")
+    optimize_rag.add_argument("--vram", type=_positive_float, help="Available VRAM in GiB")
+
+    perf = subparsers.add_parser(
+        "perf",
+        help="Run lightweight local AI performance UX smoke tests",
+        description=(
+            "Measure endpoint reachability, tiny chat latency, and streaming TTFT. "
+            "These are timeout-bounded smoke tests, not benchmarks."
+        ),
+    )
+    perf_subparsers = perf.add_subparsers(dest="perf_command", required=True)
+    perf_endpoint = perf_subparsers.add_parser(
+        "endpoint",
+        help="Smoke-test OpenAI-compatible endpoint latency",
+        description=(
+            "Check /models and optionally run one tiny chat completion request. "
+            "No models are downloaded or services started."
+        ),
+        epilog="Example: inferdoctor perf endpoint --endpoint http://127.0.0.1:8000/v1 --model local-model --timeout 30",
+    )
+    perf_endpoint.add_argument("--endpoint", required=True, help="OpenAI-compatible base URL, usually ending in /v1")
+    perf_endpoint.add_argument("--model", help="Model name to use for a tiny chat completion smoke request")
+    perf_endpoint.add_argument("--timeout", type=_positive_float, default=30.0, help="Strict request timeout in seconds")
+    perf_endpoint.add_argument("--runs", type=_perf_runs, default=1, help="Measured request count, bounded to 1-3")
+    perf_endpoint.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
+    perf_endpoint.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
+    perf_endpoint.add_argument("--output", help="Write report to a file instead of stdout")
+    perf_streaming = perf_subparsers.add_parser(
+        "streaming",
+        help="Smoke-test streaming TTFT for an OpenAI-compatible endpoint",
+        description=(
+            "Send one tiny stream=true chat completion request and measure time to first streamed chunk. "
+            "This is a smoke test, not a benchmark."
+        ),
+        epilog="Example: inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model",
+    )
+    perf_streaming.add_argument("--endpoint", required=True, help="OpenAI-compatible base URL, usually ending in /v1")
+    perf_streaming.add_argument("--model", required=True, help="Model name to use for the tiny streaming smoke request")
+    perf_streaming.add_argument("--timeout", type=_positive_float, default=30.0, help="Strict request timeout in seconds")
+    perf_streaming.add_argument("--runs", type=_perf_runs, default=1, help="Measured request count, bounded to 1-3")
+    perf_streaming.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
+    perf_streaming.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
+    perf_streaming.add_argument("--output", help="Write report to a file instead of stdout")
+
     report = subparsers.add_parser(
         "report",
         help="Generate a JSON or Markdown diagnostic report",
@@ -160,7 +300,7 @@ def _parser() -> argparse.ArgumentParser:
         help="Report output format",
     )
     report.add_argument("--output", help="Write the report to this file")
-    _add_runtime_options(report)
+    _add_runtime_options(report, include_language=False)
 
     profile = subparsers.add_parser(
         "profile",
@@ -178,7 +318,7 @@ def _parser() -> argparse.ArgumentParser:
         help="Profile output format",
     )
     profile.add_argument("--output", help="Write the profile to this file")
-    _add_runtime_options(profile)
+    _add_runtime_options(profile, include_language=False)
 
     explain = subparsers.add_parser(
         "explain",
@@ -360,6 +500,11 @@ def _parser() -> argparse.ArgumentParser:
         help="List available starter templates",
         description="Show beginner-friendly local AI app templates.",
     )
+    template_subparsers.add_parser(
+        "registry",
+        help="Show built-in template source and future registry safety rules",
+        description="Explain built-in templates and future community template registry principles.",
+    )
     template_show = template_subparsers.add_parser(
         "show",
         help="Show details for one starter template",
@@ -423,6 +568,26 @@ def _parser() -> argparse.ArgumentParser:
         help="Per-command timeout in seconds",
     )
 
+    template_compose = template_subparsers.add_parser(
+        "compose",
+        help="Generate optional Docker Compose files for a starter template",
+        description=(
+            "Generate Docker Compose starter files only. This does not pull images, "
+            "start containers, install runtimes, or call endpoints."
+        ),
+        epilog="Example: inferdoctor template compose customer-service --output ./compose-customer-service",
+    )
+    template_compose.add_argument(
+        "template",
+        choices=compose_template_names(),
+        help="Template name for Compose guidance",
+    )
+    template_compose.add_argument(
+        "--output",
+        required=True,
+        help="Directory where Compose starter files should be written",
+    )
+
     def add_scenario_parser(name: str):
         scenario_parser = subparsers.add_parser(
             name,
@@ -436,7 +601,7 @@ def _parser() -> argparse.ArgumentParser:
             choices=scenario_names(),
             help="Scenario to show; omit to show all scenarios",
         )
-        _add_runtime_options(scenario_parser)
+        _add_runtime_options(scenario_parser, include_language=False)
 
     add_scenario_parser("scenario")
     add_scenario_parser("scenarios")
@@ -458,12 +623,15 @@ def _results_for_target(
     config_path: Optional[str],
     timeout: Optional[float] = None,
     endpoint: Optional[str] = None,
+    language: Optional[str] = None,
 ) -> Tuple[List[CheckResult], Config]:
     registry = default_registry()
     checkers = [registry.get(target)] if target else registry.all()
     config = _load(config_path)
     if timeout is not None:
         config.timeout = timeout
+    if language is not None:
+        config.language = language
     if endpoint is not None:
         if target is None:
             raise SystemExit("inferdoctor: --endpoint requires a component name")
@@ -478,6 +646,22 @@ def _results_for_target(
     return run_checks(checkers, config), config
 
 
+
+def _render_perf_output(result, output_format: str) -> str:
+    if output_format == "json":
+        return render_perf_json(result)
+    if output_format == "markdown":
+        return render_perf_markdown(result)
+    return render_perf_result(result)
+
+
+def _emit_output(content: str, output: Optional[str]) -> None:
+    if output:
+        Path(output).write_text(content + "\n", encoding="utf-8")
+    else:
+        print(content)
+
+
 def _exit_code(results: List[CheckResult]) -> int:
     return 1 if any(result.status == Status.FAIL for result in results) else 0
 
@@ -488,10 +672,66 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if not arguments:
         arguments = ["check"]
     args = parser.parse_args(arguments)
+    if args.command is None:
+        args = parser.parse_args(["check"] + arguments)
+    if getattr(args, "language", None) is not None and args.command != "check":
+        parser.error(
+            "--language currently applies only to the default health dashboard and inferdoctor check; "
+            "other commands may remain English in this first i18n release"
+        )
 
     if args.command == "explain":
         print(render_explanation(args.topic))
         return 0
+    if args.command == "optimize":
+        if args.optimize_command == "endpoint":
+            print(render_optimization_report(advise_endpoint(
+                runtime=args.runtime,
+                vram_gib=args.vram,
+                model_size=args.model_size,
+                quant=args.quant,
+                streaming=args.streaming,
+                ttft=args.ttft,
+                tps=args.tps,
+                latency=args.latency,
+                context_tokens=args.context_tokens,
+                ttft_variance=args.ttft_variance,
+                containerized=args.containerized,
+                docker=args.docker,
+                cold_start=args.cold_start,
+                cpu_fallback_suspected=args.cpu_fallback_suspected,
+            )))
+            return 0
+        if args.optimize_command == "rag":
+            print(render_optimization_report(advise_rag(
+                docs=args.docs,
+                chunks=args.chunks,
+                top_k=args.top_k,
+                rerank=args.rerank,
+                retrieval_ms=args.retrieval_ms,
+                rerank_ms=args.rerank_ms,
+                embedding_ms=args.embedding_ms,
+                filter_ms=args.filter_ms,
+                doc_load_ms=args.doc_load_ms,
+                context_build_ms=args.context_build_ms,
+                generation_ms=args.generation_ms,
+                ttft=args.ttft,
+                streaming=args.streaming,
+                model_size=args.model_size,
+                vram_gib=args.vram,
+            )))
+            return 0
+
+    if args.command == "perf":
+        if args.perf_command == "endpoint":
+            result = run_endpoint_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)
+            _emit_output(_render_perf_output(result, args.format), args.output)
+            return 0
+        if args.perf_command == "streaming":
+            result = run_streaming_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)
+            _emit_output(_render_perf_output(result, args.format), args.output)
+            return 0
+
     if args.command == "recommend":
         print(
             render_recommendation(
@@ -553,25 +793,40 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             )
             return 0
         if args.stack_command == "bootstrap":
-            if not args.dry_run:
-                print("inferdoctor: stack bootstrap currently requires --dry-run; no commands were executed.", file=sys.stderr)
-                return 2
-            print(
-                render_stack_bootstrap_plan(
-                    build_stack_bootstrap_plan(
-                        goal=args.goal,
-                        preference=args.preference,
-                        hardware=args.hardware,
-                        vram_gib=args.vram,
-                        output_dir=args.output,
+            if args.dry_run:
+                print(
+                    render_stack_bootstrap_plan(
+                        build_stack_bootstrap_plan(
+                            goal=args.goal,
+                            preference=args.preference,
+                            hardware=args.hardware,
+                            vram_gib=args.vram,
+                            output_dir=args.output,
+                        )
                     )
                 )
-            )
-            return 0
+                return 0
+            if args.output:
+                print(
+                    render_stack_bootstrap_files(
+                        create_stack_bootstrap_project(
+                            goal=args.goal,
+                            preference=args.preference,
+                            hardware=args.hardware,
+                            vram_gib=args.vram,
+                            output_dir=args.output,
+                        )
+                    )
+                )
+                return 0
+            print("inferdoctor: stack bootstrap requires --dry-run or --output; no commands were executed.", file=sys.stderr)
+            return 2
     if args.command == "template":
         try:
             if args.template_command == "list":
                 print(render_template_list())
+            elif args.template_command == "registry":
+                print(render_template_registry())
             elif args.template_command == "show":
                 print(render_template_detail(args.template))
             elif args.template_command == "create":
@@ -581,6 +836,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 print(render_template_validation(validate_template_project(args.path)))
             elif args.template_command == "smoke-test":
                 print(render_template_smoke_test(smoke_test_template_project(args.path, timeout=args.timeout)))
+            elif args.template_command == "compose":
+                written = create_compose_project(args.template, args.output)
+                print(render_compose_create_summary(args.template, args.output, written))
         except (KeyError, OSError) as exc:
             print("inferdoctor: {0}".format(exc), file=sys.stderr)
             return 2
@@ -624,16 +882,33 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             print(rendered)
         return _exit_code(results)
 
-    results, config = _results_for_target(
-        getattr(args, "target", None),
-        getattr(args, "config", None),
-        getattr(args, "timeout", None),
-        getattr(args, "endpoint", None),
-    )
     if args.command == "check":
-        print(render_dashboard(results, config, verbose=args.verbose))
+        language = getattr(args, "language", None)
+        results, config = (
+            _results_for_target(
+                getattr(args, "target", None),
+                getattr(args, "config", None),
+                getattr(args, "timeout", None),
+                getattr(args, "endpoint", None),
+                language,
+            )
+            if language is not None
+            else _results_for_target(
+                getattr(args, "target", None),
+                getattr(args, "config", None),
+                getattr(args, "timeout", None),
+                getattr(args, "endpoint", None),
+            )
+        )
+        print(render_dashboard(results, config, verbose=args.verbose, language=config.language))
         return _exit_code(results)
 
+    results, config = _results_for_target(
+        None,
+        getattr(args, "config", None),
+        getattr(args, "timeout", None),
+        None,
+    )
     rendered = (
         render_json(results)
         if args.format == "json"

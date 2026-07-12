@@ -7,6 +7,7 @@ from typing import Iterable, List
 from inferdoctor.core.config import Config
 from inferdoctor.core.health import calculate_health, recommend_fixes
 from inferdoctor.core.models import CheckResult
+from inferdoctor.i18n import t
 
 
 DISPLAY_NAMES = {
@@ -25,11 +26,10 @@ DISPLAY_NAMES = {
 }
 
 
-def _status_summary(health) -> str:
-    return (
-        "Stack Summary: {pass_count} working | {warn_count} needs attention | "
-        "{skip_count} optional/offline | {fail_count} failed"
-    ).format(
+def _status_summary(health, language: str) -> str:
+    return t(
+        "dashboard_stack_summary",
+        language,
         pass_count=health.counts.get("pass", 0),
         warn_count=health.counts.get("warn", 0),
         skip_count=health.counts.get("skip", 0),
@@ -37,33 +37,37 @@ def _status_summary(health) -> str:
     )
 
 
-def _doctor_read(health) -> str:
+def _doctor_read(health, language: str) -> str:
     if health.counts.get("fail", 0):
-        return "Doctor's read: At least one required check failed. Start with the first fix below."
+        return t("dashboard_doctor_read_fail", language)
     if health.counts.get("warn", 0):
-        return "Doctor's read: Some components need attention. Start with the first fix below."
+        return t("dashboard_doctor_read_warn", language)
     if health.counts.get("skip", 0):
-        return "Doctor's read: No hard failures detected. Skipped components are optional unless you use them."
-    return "Doctor's read: All detected checks passed. Your local AI stack looks ready."
+        return t("dashboard_doctor_read_skip", language)
+    return t("dashboard_doctor_read_pass", language)
 
 
 def render_console(
-    results: Iterable[CheckResult], verbose: bool = False
+    results: Iterable[CheckResult], verbose: bool = False, language: str = "auto"
 ) -> str:
     lines = []
     for result in results:
         lines.append(
-            "[{0:<4}] {1:<10} {2}".format(
-                result.status.value.upper(), result.name, result.summary
+            t(
+                "console_status",
+                language,
+                status=result.status.value.upper(),
+                name=result.name,
+                summary=result.summary,
             )
         )
         for detail in result.details:
-            lines.append("       - {0}".format(detail))
+            lines.append(t("console_detail", language, detail=detail))
         for suggestion in result.suggestions:
-            lines.append("       suggestion: {0}".format(suggestion))
+            lines.append(t("console_suggestion", language, suggestion=suggestion))
         if verbose:
             raw_data = json.dumps(result.raw_data, indent=2, sort_keys=True)
-            lines.append("       raw_data:")
+            lines.append(t("console_raw_data", language))
             lines.extend(
                 "         {0}".format(line) for line in raw_data.splitlines()
             )
@@ -71,20 +75,20 @@ def render_console(
 
 
 def render_dashboard(
-    results: Iterable[CheckResult], config: Config, verbose: bool = False
+    results: Iterable[CheckResult], config: Config, verbose: bool = False, language: str = "auto"
 ) -> str:
     result_list = list(results)
     health = calculate_health(result_list)
     lines: List[str] = [
-        "InferDoctor - Local AI Stack Health Check",
+        t("dashboard_title", language),
         "=" * 57,
-        "Overall Health: {0} / 100  ({1})".format(health.score, health.label),
-        _status_summary(health),
-        _doctor_read(health),
-        "PASS 100 | WARN 60 | FAIL 0 | SKIP 85  (heuristic)",
+        t("dashboard_health", language, score=health.score, label=health.label),
+        _status_summary(health, language),
+        _doctor_read(health, language),
+        t("dashboard_scores", language),
         "",
-        "Component   Status   Summary",
-        "----------- -------- --------------------------------------------------",
+        t("dashboard_header", language),
+        t("dashboard_divider", language),
     ]
     for result in result_list:
         lines.append(
@@ -96,26 +100,29 @@ def render_dashboard(
         )
 
     fixes = recommend_fixes(result_list, config)
-    lines.extend(["", "Top recommended fixes (most useful first):"])
+    lines.extend(["", t("dashboard_top_fixes", language)])
     if not fixes:
-        lines.append("No immediate fixes recommended. Your detected stack looks healthy.")
+        lines.append(t("dashboard_no_fixes", language))
     for index, fix in enumerate(fixes, start=1):
         lines.extend(
             [
-                "{0}. {1}: {2}".format(index, fix.component, fix.issue),
-                "   Likely cause: {0}".format(fix.likely_cause),
-                "   Impact: {0}".format(fix.impact),
-                "   Try: {0}".format(fix.next_command),
+                t("dashboard_fix", language, index=index, component=fix.component, issue=fix.issue),
+                t("dashboard_likely_cause", language, cause=fix.likely_cause),
+                t("dashboard_impact", language, impact=fix.impact),
+                t("dashboard_try", language, command=fix.next_command),
             ]
         )
         if fix.config_hint:
-            hint_label = (
-                "Config" if fix.config_hint.startswith("endpoints.") else "Note"
+            hint_label = t(
+                "dashboard_hint_config"
+                if fix.config_hint.startswith("endpoints.")
+                else "dashboard_hint_note",
+                language,
             )
             lines.append(
-                "   {0}: {1}".format(hint_label, fix.config_hint)
+                t("dashboard_config", language, hint_label=hint_label, config_hint=fix.config_hint)
             )
 
     if verbose:
-        lines.extend(["", "Detailed diagnostics:", render_console(result_list, True)])
+        lines.extend(["", t("dashboard_detail", language), render_console(result_list, True, language=language)])
     return "\n".join(lines)

@@ -5,6 +5,8 @@ import pytest
 from inferdoctor.cli import _results_for_target, main
 from inferdoctor.core.config import Config
 from inferdoctor.core.models import CheckResult, Status
+from inferdoctor.i18n import TRANSLATIONS, t
+from inferdoctor.core.perf import PerfResult
 
 
 def _sample_result():
@@ -19,6 +21,13 @@ def _sample_run():
     return [_sample_result()], Config()
 
 
+def _sample_run_for_language(target=None, config_path=None, timeout=None, endpoint=None, language=None):
+    config = Config()
+    if language is not None:
+        config.language = language
+    return [_sample_result()], config
+
+
 @patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
 def test_default_command_renders_health_dashboard(results, capsys):
     exit_code = main([])
@@ -30,6 +39,37 @@ def test_default_command_renders_health_dashboard(results, capsys):
     results.assert_called_once_with(None, None, None, None)
 
 
+@patch("inferdoctor.cli._results_for_target", side_effect=_sample_run_for_language)
+def test_global_language_flag_uses_check_command(results, capsys):
+    exit_code = main(["--language", "zh"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "InferDoctor - 本地 AI 堆栈健康检查" in output
+    assert "整体健康度" in output
+    results.assert_called_once_with(None, None, None, None, "zh")
+
+
+@patch("inferdoctor.cli._results_for_target", side_effect=_sample_run_for_language)
+def test_global_language_flag_supports_japanese(results, capsys):
+    exit_code = main(["--language", "ja"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "InferDoctor - ローカルAIスタックヘルスチェック" in output
+    assert "全体の健全性" in output
+    results.assert_called_once_with(None, None, None, None, "ja")
+
+
+@patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
+def test_default_command_does_not_force_language_override(results, capsys):
+    exit_code = main([])
+
+    assert exit_code == 0
+    assert "InferDoctor - Local AI Stack Health Check" in capsys.readouterr().out
+    results.assert_called_once_with(None, None, None, None)
+
+
 @patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
 def test_check_command_renders_dashboard(results, capsys):
     exit_code = main(["check", "system"])
@@ -37,6 +77,47 @@ def test_check_command_renders_dashboard(results, capsys):
     assert exit_code == 0
     assert "System      PASS" in capsys.readouterr().out
     results.assert_called_once_with("system", None, None, None)
+
+
+@patch("inferdoctor.cli._results_for_target", side_effect=_sample_run_for_language)
+def test_check_command_accepts_language(results, capsys):
+    exit_code = main(["check", "--language", "zh"])
+
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "InferDoctor - 本地 AI 堆栈健康检查" in output
+    results.assert_called_once_with(None, None, None, None, "zh")
+
+
+def test_report_command_rejects_language_option(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["report", "--language", "zh", "--format", "markdown"])
+
+    assert exc.value.code == 2
+    assert "unrecognized arguments: --language zh" in capsys.readouterr().err
+
+
+def test_global_language_rejects_non_dashboard_command(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--language", "zh", "template", "list"])
+
+    assert exc.value.code == 2
+    assert "--language currently applies only" in capsys.readouterr().err
+
+
+def test_global_language_rejects_perf_command(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main([
+            "--language",
+            "zh",
+            "perf",
+            "endpoint",
+            "--endpoint",
+            "http://127.0.0.1:8000/v1",
+        ])
+
+    assert exc.value.code == 2
+    assert "--language currently applies only" in capsys.readouterr().err
 
 
 @patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
@@ -73,6 +154,35 @@ def test_timeout_must_be_positive(capsys):
 
     assert exc.value.code == 2
     assert "must be greater than zero" in capsys.readouterr().err
+
+
+def test_invalid_language_flag_is_rejected(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--language", "fr"])
+
+    assert exc.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+
+
+def test_invalid_config_language_is_rejected_by_cli(tmp_path):
+    config_path = tmp_path / "inferdoctor.yaml"
+    config_path.write_text("language: fr\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as exc:
+        main(["check", "--config", str(config_path)])
+
+    assert "configuration error" in str(exc.value)
+    assert "language" in str(exc.value)
+
+
+def test_translation_dictionaries_have_identical_key_sets():
+    expected = set(TRANSLATIONS["en"])
+    assert set(TRANSLATIONS["zh"]) == expected
+    assert set(TRANSLATIONS["ja"]) == expected
+
+
+def test_translation_falls_back_to_english_for_unknown_language():
+    assert t("dashboard_title", "fr") == "InferDoctor - Local AI Stack Health Check"
 
 
 def test_endpoint_override_rejects_invalid_url():
@@ -325,3 +435,202 @@ def test_stack_bootstrap_dry_run_outputs_plan(results, capsys):
     assert "inferdoctor template create customer-service" in output
     assert "will not do automatically" in output
     results.assert_not_called()
+
+
+
+def test_template_compose_command(tmp_path, capsys):
+    output = tmp_path / "compose"
+
+    exit_code = main(["template", "compose", "customer-service", "--output", str(output)])
+
+    assert exit_code == 0
+    assert "Docker Compose Files Created" in capsys.readouterr().out
+    assert (output / "docker-compose.yml").exists()
+    assert (output / ".env.example").exists()
+
+
+
+def test_stack_bootstrap_output_generates_files(tmp_path, capsys):
+    output = tmp_path / "bootstrap"
+
+    exit_code = main(["stack", "bootstrap", "--goal", "customer-service", "--output", str(output)])
+
+    assert exit_code == 0
+    assert "Stack Bootstrap Files Created" in capsys.readouterr().out
+    assert (output / "README.md").exists()
+    assert (output / "bootstrap_plan.md").exists()
+
+
+
+def test_template_registry_command(capsys):
+    exit_code = main(["template", "registry"])
+
+    assert exit_code == 0
+    assert "InferDoctor Template Registry" in capsys.readouterr().out
+
+
+@patch("inferdoctor.cli.run_endpoint_smoke")
+def test_perf_endpoint_command_uses_smoke_runner(smoke, capsys):
+    smoke.return_value = PerfResult(
+        mode="endpoint",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        user_experience="Good for interactive demo",
+    )
+
+    exit_code = main([
+        "perf",
+        "endpoint",
+        "--endpoint",
+        "http://127.0.0.1:8000/v1",
+        "--model",
+        "local-model",
+        "--timeout",
+        "3",
+    ])
+
+    assert exit_code == 0
+    assert "Performance UX Smoke Test" in capsys.readouterr().out
+    smoke.assert_called_once_with("http://127.0.0.1:8000/v1", "local-model", 3.0, runs=1, warmup=0)
+
+
+@patch("inferdoctor.cli.run_streaming_smoke")
+def test_perf_streaming_command_uses_smoke_runner(smoke, capsys):
+    smoke.return_value = PerfResult(
+        mode="streaming",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        streaming_supported="confirmed",
+        ttft_seconds=0.8,
+        user_experience="Good for interactive demo",
+    )
+
+    exit_code = main([
+        "perf",
+        "streaming",
+        "--endpoint",
+        "http://127.0.0.1:8000/v1",
+        "--model",
+        "local-model",
+    ])
+
+    assert exit_code == 0
+    assert "Streaming observed: confirmed" in capsys.readouterr().out
+    smoke.assert_called_once_with("http://127.0.0.1:8000/v1", "local-model", 30.0, runs=1, warmup=0)
+
+
+def test_optimize_endpoint_command_renders_advice(capsys):
+    exit_code = main([
+        "optimize",
+        "endpoint",
+        "--runtime",
+        "vllm",
+        "--vram",
+        "24",
+        "--model-size",
+        "14b",
+        "--quant",
+        "q4",
+    ])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "Endpoint UX Optimization Advice" in output
+    assert "inferdoctor perf streaming" in output
+
+
+def test_optimize_rag_command_renders_advice(capsys):
+    exit_code = main([
+        "optimize",
+        "rag",
+        "--top-k",
+        "8",
+        "--ttft",
+        "2.5",
+        "--streaming",
+    ])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert "RAG UX Optimization Advice" in output
+    assert "top_k" in output
+
+
+def test_perf_rejects_excessive_runs(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["perf", "streaming", "--endpoint", "http://127.0.0.1:8000/v1", "--model", "local-model", "--runs", "4"])
+
+    assert exc.value.code == 2
+    assert "--runs must be between 1 and 3" in capsys.readouterr().err
+
+
+def test_perf_rejects_excessive_warmup(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["perf", "endpoint", "--endpoint", "http://127.0.0.1:8000/v1", "--model", "local-model", "--warmup", "2"])
+
+    assert exc.value.code == 2
+    assert "--warmup must be between 0 and 1" in capsys.readouterr().err
+
+
+@patch("inferdoctor.cli.run_endpoint_smoke")
+def test_perf_endpoint_writes_json_report(smoke, tmp_path, capsys):
+    smoke.return_value = PerfResult(
+        mode="endpoint",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        successful_runs=1,
+    )
+    output = tmp_path / "perf.json"
+
+    exit_code = main([
+        "perf",
+        "endpoint",
+        "--endpoint",
+        "http://127.0.0.1:8000/v1",
+        "--model",
+        "local-model",
+        "--format",
+        "json",
+        "--output",
+        str(output),
+    ])
+
+    assert exit_code == 0
+    assert capsys.readouterr().out == ""
+    assert "\"schema_version\": \"inferdoctor.perf.v1\"" in output.read_text(encoding="utf-8")
+
+
+@patch("inferdoctor.cli.run_streaming_smoke")
+def test_perf_streaming_writes_markdown_report(smoke, tmp_path):
+    smoke.return_value = PerfResult(
+        mode="streaming",
+        endpoint="http://127.0.0.1:8000/v1",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        streaming_supported="confirmed",
+        successful_runs=1,
+    )
+    output = tmp_path / "perf.md"
+
+    exit_code = main([
+        "perf",
+        "streaming",
+        "--endpoint",
+        "http://127.0.0.1:8000/v1",
+        "--model",
+        "local-model",
+        "--format",
+        "markdown",
+        "--output",
+        str(output),
+    ])
+
+    assert exit_code == 0
+    assert "# InferDoctor Performance Smoke Test" in output.read_text(encoding="utf-8")

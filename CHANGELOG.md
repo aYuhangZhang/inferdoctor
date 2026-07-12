@@ -4,6 +4,28 @@
 
 - No unreleased changes.
 
+## v0.5.0
+
+### Development Notes
+
+- Performance UX smoke tests for OpenAI-compatible endpoints, including TTFT, streaming, bounded cold/warm runs, structured reports, and endpoint redaction.
+- Endpoint and RAG optimization advice for local AI user experience.
+- Streaming-first starter templates with safe dry-run and config-check paths.
+- Docker Compose starter file generation for selected templates.
+- Safe stack bootstrap file generation for starter projects and setup plans.
+- Improved Dify, Open WebUI, and Ollama + Open WebUI starter guidance.
+- Local template registry foundation with conservative safety rules.
+- Project readiness scoring for template validation and smoke tests.
+- More real-world template examples for Dify, Open WebUI, Compose, and bootstrap workflows.
+- Added first-step i18n for the health dashboard and `inferdoctor check` console summary in English, Chinese, and Japanese. Full CLI localization remains future work, and machine-readable schemas keep stable English field names.
+
+### Safety
+
+- Compose generation writes files only; it does not pull images or start containers.
+- Bootstrap generation writes starter files only; it does not install dependencies, call endpoints, or run inference.
+- Template registry support is local-only; no remote template execution is enabled.
+- Recommendations, performance readings, and readiness scores remain heuristics, not benchmarks.
+
 ## v0.4.1
 
 ### Highlights

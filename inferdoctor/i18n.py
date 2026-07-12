@@ -1,0 +1,136 @@
+from __future__ import annotations
+
+import os
+from typing import Dict, Mapping, Optional
+
+SUPPORTED_LANGUAGES = ("auto", "en", "zh", "ja")
+
+TRANSLATIONS: Dict[str, Dict[str, str]] = {
+    "en": {
+        "dashboard_title": "InferDoctor - Local AI Stack Health Check",
+        "dashboard_health": "Overall Health: {score} / 100  ({label})",
+        "dashboard_scores": "PASS 100 | WARN 60 | FAIL 0 | SKIP 85  (heuristic)",
+        "dashboard_header": "Component   Status   Summary",
+        "dashboard_divider": "----------- -------- --------------------------------------------------",
+        "dashboard_top_fixes": "Top recommended fixes (most useful first):",
+        "dashboard_no_fixes": "No immediate fixes recommended. Your detected stack looks healthy.",
+        "dashboard_fix": "{index}. {component}: {issue}",
+        "dashboard_likely_cause": "   Likely cause: {cause}",
+        "dashboard_impact": "   Impact: {impact}",
+        "dashboard_try": "   Try: {command}",
+        "dashboard_config": "   {hint_label}: {config_hint}",
+        "dashboard_hint_config": "Config",
+        "dashboard_hint_note": "Note",
+        "dashboard_detail": "Detailed diagnostics:",
+        "dashboard_stack_summary": "Stack Summary: {pass_count} working | {warn_count} needs attention | {skip_count} optional/offline | {fail_count} failed",
+        "dashboard_doctor_read_fail": "Doctor's read: At least one required check failed. Start with the first fix below.",
+        "dashboard_doctor_read_warn": "Doctor's read: Some components need attention. Start with the first fix below.",
+        "dashboard_doctor_read_skip": "Doctor's read: No hard failures detected. Skipped components are optional unless you use them.",
+        "dashboard_doctor_read_pass": "Doctor's read: All detected checks passed. Your local AI stack looks ready.",
+        "console_status": "[{status:<4}] {name:<10} {summary}",
+        "console_detail": "       - {detail}",
+        "console_suggestion": "       suggestion: {suggestion}",
+        "console_raw_data": "       raw_data:",
+    },
+    "zh": {
+        "dashboard_title": "InferDoctor - 本地 AI 堆栈健康检查",
+        "dashboard_health": "整体健康度：{score} / 100  ({label})",
+        "dashboard_scores": "PASS 100 | WARN 60 | FAIL 0 | SKIP 85  （启发式评分）",
+        "dashboard_header": "组件         状态     摘要",
+        "dashboard_divider": "----------- -------- --------------------------------------------------",
+        "dashboard_top_fixes": "建议修复（按优先级排序）：",
+        "dashboard_no_fixes": "没有发现紧急修复建议。检测到的堆栈看起来很健康。",
+        "dashboard_fix": "{index}. {component}: {issue}",
+        "dashboard_likely_cause": "   可能原因：{cause}",
+        "dashboard_impact": "   影响：{impact}",
+        "dashboard_try": "   尝试：{command}",
+        "dashboard_config": "   {hint_label}：{config_hint}",
+        "dashboard_hint_config": "配置",
+        "dashboard_hint_note": "说明",
+        "dashboard_detail": "详细诊断信息：",
+        "dashboard_stack_summary": "堆栈摘要：{pass_count} 个正常 | {warn_count} 个需注意 | {skip_count} 个可选/离线 | {fail_count} 个失败",
+        "dashboard_doctor_read_fail": "诊断结论：至少一个必需检查失败。建议先从下面的第一项开始排查。",
+        "dashboard_doctor_read_warn": "诊断结论：某些组件需要注意。建议先从下面的第一项开始排查。",
+        "dashboard_doctor_read_skip": "诊断结论：未检测到严重失败。被跳过的组件通常是可选项，除非您的应用依赖它们。",
+        "dashboard_doctor_read_pass": "诊断结论：所有检测通过。您的本地 AI 堆栈看起来已准备就绪。",
+        "console_status": "[{status:<4}] {name:<10} {summary}",
+        "console_detail": "       - {detail}",
+        "console_suggestion": "       建议：{suggestion}",
+        "console_raw_data": "       原始数据：",
+    },
+    "ja": {
+        "dashboard_title": "InferDoctor - ローカルAIスタックヘルスチェック",
+        "dashboard_health": "全体の健全性：{score} / 100  ({label})",
+        "dashboard_scores": "PASS 100 | WARN 60 | FAIL 0 | SKIP 85  （ヒューリスティック）",
+        "dashboard_header": "コンポーネント   ステータス   概要",
+        "dashboard_divider": "----------- -------- --------------------------------------------------",
+        "dashboard_top_fixes": "推奨される対応（優先順）：",
+        "dashboard_no_fixes": "すぐに必要な修正はありません。検出されたスタックは健康に見えます。",
+        "dashboard_fix": "{index}. {component}: {issue}",
+        "dashboard_likely_cause": "   考えられる原因: {cause}",
+        "dashboard_impact": "   影響: {impact}",
+        "dashboard_try": "   試す: {command}",
+        "dashboard_config": "   {hint_label}: {config_hint}",
+        "dashboard_hint_config": "設定",
+        "dashboard_hint_note": "注記",
+        "dashboard_detail": "詳細な診断情報：",
+        "dashboard_stack_summary": "スタック概要：{pass_count} 件成功 | {warn_count} 件注意 | {skip_count} 件オプション/オフライン | {fail_count} 件失敗",
+        "dashboard_doctor_read_fail": "診断結果：必要なチェックが少なくとも1つ失敗しました。まず下の最初の項目から確認してください。",
+        "dashboard_doctor_read_warn": "診断結果：いくつかのコンポーネントに注意が必要です。まず下の最初の項目から確認してください。",
+        "dashboard_doctor_read_skip": "診断結果：重大な失敗は検出されませんでした。スキップされたコンポーネントは、使わない場合は通常オプションです。",
+        "dashboard_doctor_read_pass": "診断結果：検出されたチェックはすべて成功しました。ローカルAIスタックは準備できているようです。",
+        "console_status": "[{status:<4}] {name:<10} {summary}",
+        "console_detail": "       - {detail}",
+        "console_suggestion": "       提案：{suggestion}",
+        "console_raw_data": "       生データ：",
+    },
+}
+
+
+def _language_from_locale(value: str) -> Optional[str]:
+    normalized = value.strip().split(".")[0].replace("-", "_").lower()
+    if not normalized or normalized in {"c", "posix"}:
+        return None
+    if normalized.startswith("zh"):
+        return "zh"
+    if normalized.startswith("ja"):
+        return "ja"
+    if normalized.startswith("en"):
+        return "en"
+    return None
+
+
+def detect_system_language(env: Optional[Mapping[str, str]] = None) -> str:
+    environment = os.environ if env is None else env
+    for key in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
+        raw_value = environment.get(key, "")
+        for candidate in raw_value.split(":"):
+            detected = _language_from_locale(candidate)
+            if detected:
+                return detected
+    return "en"
+
+
+def normalize_language(language: str) -> str:
+    normalized = (language or "").strip().lower()
+    if normalized in SUPPORTED_LANGUAGES:
+        return normalized
+    if normalized.startswith("zh"):
+        return "zh"
+    if normalized.startswith("ja"):
+        return "ja"
+    if normalized.startswith("en"):
+        return "en"
+    raise ValueError("Unsupported language: {0}".format(language))
+
+
+def t(key: str, language: str = "auto", **kwargs: object) -> str:
+    if language == "auto":
+        language = detect_system_language()
+    try:
+        normalized_language = normalize_language(language)
+    except ValueError:
+        normalized_language = "en"
+    translation = TRANSLATIONS.get(normalized_language, TRANSLATIONS["en"])
+    template = translation.get(key, TRANSLATIONS["en"].get(key, key))
+    return template.format(**kwargs)

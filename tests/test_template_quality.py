@@ -115,3 +115,38 @@ def test_generated_templates_do_not_contain_obvious_secrets_or_private_paths(tmp
 
         for forbidden in FORBIDDEN_CONTENT:
             assert forbidden not in text
+
+
+def test_generated_templates_are_streaming_first_by_default(tmp_path):
+    for template in CREATABLE_TEMPLATES:
+        output = tmp_path / template
+        create_template_project(template, str(output))
+        config = (output / "config.yaml").read_text(encoding="utf-8")
+        env_example = (output / ".env.example").read_text(encoding="utf-8")
+        readme = (output / "README.md").read_text(encoding="utf-8")
+
+        assert "streaming: true" in config
+        assert "LOCAL_AI_STREAMING=true" in env_example
+        assert "TTFT" in readme
+
+    doc_config = (tmp_path / "local-doc-qa" / "config.yaml").read_text(encoding="utf-8")
+    assert "top_k: 4" in doc_config
+    assert "context_budget" in doc_config
+
+
+def test_generated_templates_expose_live_endpoint_controls_explicitly(tmp_path):
+    for template in CREATABLE_TEMPLATES:
+        output = tmp_path / template
+        create_template_project(template, str(output))
+        source_name = "app.py" if (output / "app.py").exists() else "query.py"
+        source = (output / source_name).read_text(encoding="utf-8")
+        readme = (output / "README.md").read_text(encoding="utf-8")
+
+        assert "--check-endpoint" in source
+        assert "--warmup" in source
+        assert "--check-endpoint" in readme
+        assert "live" in readme
+
+    query = (tmp_path / "local-doc-qa" / "query.py").read_text(encoding="utf-8")
+    assert "--generate" in query
+    assert "Retrieval complete" in query

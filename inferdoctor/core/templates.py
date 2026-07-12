@@ -107,26 +107,26 @@ TEMPLATES: Dict[str, TemplateInfo] = {
     "dify-rag": TemplateInfo(
         name="dify-rag",
         title="Dify Local RAG Starter",
-        description="A readiness path for running a Dify-backed local RAG app.",
-        target_user="Developers using Dify as the app layer.",
-        required_stack=["Dify endpoint", "model endpoint"],
-        optional_stack=["Xinference", "Ollama", "vLLM"],
-        hardware_recommendation="Match hardware to the selected model endpoint.",
+        description="A readiness path for Dify connected to an existing local OpenAI-compatible model endpoint.",
+        target_user="Developers who want Dify as the RAG/app layer without hiding endpoint diagnostics.",
+        required_stack=["Dify endpoint", "local OpenAI-compatible model endpoint"],
+        optional_stack=["Ollama", "vLLM", "SGLang", "Xinference", "Docker Compose guidance"],
+        hardware_recommendation="Dify can run separately; model endpoint hardware decides generation speed and capacity.",
         estimated_difficulty="medium",
-        generated_files_planned=["README.md", "inferdoctor.yaml", "sample_prompt.md"],
-        next_command="inferdoctor check dify --endpoint http://127.0.0.1:5001",
+        generated_files_planned=["README.md", "inferdoctor.yaml", "sample_prompt.md", "optional docker-compose.yml guidance"],
+        next_command="inferdoctor template compose dify-rag --output ./dify-rag-compose",
     ),
     "open-webui": TemplateInfo(
         name="open-webui",
         title="Open WebUI Starter",
-        description="A setup path for diagnosing Open WebUI plus a local backend.",
-        target_user="Users who prefer a browser UI for local chat.",
-        required_stack=["Open WebUI", "model backend"],
-        optional_stack=["Ollama", "OpenAI-compatible endpoint"],
-        hardware_recommendation="Backend model decides the hardware need.",
+        description="A browser-chat starter path for Open WebUI connected to Ollama or any local OpenAI-compatible endpoint.",
+        target_user="Beginners who want a local chat UI while keeping model backend diagnosis explicit.",
+        required_stack=["Open WebUI endpoint", "local model backend"],
+        optional_stack=["Ollama", "vLLM", "SGLang", "LM Studio", "Docker Compose guidance"],
+        hardware_recommendation="Open WebUI itself is light; the backend model decides CPU/GPU needs.",
         estimated_difficulty="easy",
-        generated_files_planned=["README.md", "inferdoctor.yaml"],
-        next_command="inferdoctor check openwebui",
+        generated_files_planned=["README.md", "inferdoctor.yaml", "optional docker-compose.yml guidance"],
+        next_command="inferdoctor template compose open-webui --output ./open-webui-compose",
     ),
     "vllm-api": TemplateInfo(
         name="vllm-api",
@@ -247,6 +247,46 @@ ENDPOINT_EXAMPLES = [
     ("Xinference OpenAI-compatible", "http://127.0.0.1:9997/v1"),
 ]
 
+CHAT_ENV_EXAMPLE = """LOCAL_AI_BASE_URL=http://127.0.0.1:8000/v1
+LOCAL_AI_MODEL=local-model
+LOCAL_AI_TIMEOUT=30
+LOCAL_AI_STREAMING=true
+LOCAL_AI_MAX_CONTEXT_CHARS=4000
+LOCAL_AI_WARMUP_PROMPT=Say hello in one short sentence.
+"""
+
+CHAT_CONFIG = """endpoint: http://127.0.0.1:8000/v1
+model: local-model
+timeout_seconds: 30
+streaming: true
+max_context_chars: 4000
+warmup_prompt: Say hello in one short sentence.
+show_progress: true
+endpoint_health_check: true
+"""
+
+DOC_QA_ENV_EXAMPLE = """LOCAL_AI_BASE_URL=http://127.0.0.1:8000/v1
+LOCAL_AI_MODEL=local-model
+LOCAL_AI_TIMEOUT=30
+LOCAL_AI_STREAMING=true
+LOCAL_AI_TOP_K=4
+LOCAL_AI_CONTEXT_BUDGET=4000
+LOCAL_AI_SHOW_PROGRESS=true
+LOCAL_AI_WARMUP_PROMPT=Summarize the retrieved context in one sentence.
+"""
+
+DOC_QA_CONFIG = """endpoint: http://127.0.0.1:8000/v1
+model: local-model
+timeout_seconds: 30
+streaming: true
+retrieval: keyword
+top_k: 4
+context_budget: 4000
+show_progress: true
+endpoint_health_check: true
+warmup_prompt: Summarize the retrieved context in one sentence.
+"""
+
 
 APP_CLIENT = r"""from __future__ import annotations
 
@@ -288,17 +328,42 @@ def read_simple_config(path: Path) -> dict[str, str]:
     return values
 
 
-def load_settings() -> tuple[str, str, int]:
+def as_bool(value: str | None, default: bool = False) -> bool:
+    if value is None or value == "":
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def as_int(value: str | None, default: int) -> int:
+    try:
+        parsed = int(value or "")
+    except ValueError:
+        return default
+    return parsed if parsed > 0 else default
+
+
+def load_settings() -> dict[str, object]:
     env_file = read_env_file(ROOT / ".env")
     config = read_simple_config(ROOT / "config.yaml")
     base_url = os.environ.get("LOCAL_AI_BASE_URL") or env_file.get("LOCAL_AI_BASE_URL") or config.get("endpoint") or DEFAULT_BASE_URL
     model = os.environ.get("LOCAL_AI_MODEL") or env_file.get("LOCAL_AI_MODEL") or config.get("model") or DEFAULT_MODEL
-    timeout_text = os.environ.get("LOCAL_AI_TIMEOUT") or env_file.get("LOCAL_AI_TIMEOUT") or config.get("timeout") or "30"
-    try:
-        timeout = int(timeout_text)
-    except ValueError:
-        timeout = 30
-    return base_url.rstrip("/"), model, timeout
+    timeout_text = os.environ.get("LOCAL_AI_TIMEOUT") or env_file.get("LOCAL_AI_TIMEOUT") or config.get("timeout_seconds") or config.get("timeout")
+    streaming_text = os.environ.get("LOCAL_AI_STREAMING") or env_file.get("LOCAL_AI_STREAMING") or config.get("streaming")
+    max_context_text = os.environ.get("LOCAL_AI_MAX_CONTEXT_CHARS") or env_file.get("LOCAL_AI_MAX_CONTEXT_CHARS") or config.get("max_context_chars")
+    warmup_prompt = os.environ.get("LOCAL_AI_WARMUP_PROMPT") or env_file.get("LOCAL_AI_WARMUP_PROMPT") or config.get("warmup_prompt") or ""
+    timeout_text = os.environ.get("LOCAL_AI_TIMEOUT") or env_file.get("LOCAL_AI_TIMEOUT") or config.get("timeout_seconds") or config.get("timeout")
+    show_progress_text = os.environ.get("LOCAL_AI_SHOW_PROGRESS") or env_file.get("LOCAL_AI_SHOW_PROGRESS") or config.get("show_progress")
+    health_check_text = os.environ.get("LOCAL_AI_ENDPOINT_HEALTH_CHECK") or env_file.get("LOCAL_AI_ENDPOINT_HEALTH_CHECK") or config.get("endpoint_health_check")
+    return {
+        "base_url": base_url.rstrip("/"),
+        "model": model,
+        "timeout": as_int(timeout_text, 30),
+        "streaming": as_bool(streaming_text, True),
+        "max_context_chars": as_int(max_context_text, 4000),
+        "warmup_prompt": warmup_prompt,
+        "show_progress": as_bool(show_progress_text, True),
+        "endpoint_health_check": as_bool(health_check_text, True),
+    }
 
 
 def read_text(path: str) -> str:
@@ -316,24 +381,85 @@ def load_system_prompt() -> str:
     return "__SYSTEM_PROMPT__"
 
 
-def ask_local_model(message: str) -> str:
-    base_url, model, timeout = load_settings()
+def trim_context(context: str, max_chars: int) -> str:
+    if len(context) <= max_chars:
+        return context
+    return context[:max_chars].rstrip() + "\n\n[Context trimmed by max_context_chars]"
+
+
+def extract_non_streaming_content(body: dict[str, object]) -> str:
+    try:
+        choices = body["choices"]  # type: ignore[index]
+        return choices[0]["message"]["content"].strip()  # type: ignore[index]
+    except (KeyError, IndexError, TypeError, AttributeError):
+        return "Endpoint response did not look like OpenAI chat completions JSON."
+
+
+def read_streaming_response(response, echo: bool = False) -> str:
+    chunks: list[str] = []
+    for raw_line in response:
+        line = raw_line.decode("utf-8", errors="replace").strip()
+        if not line or not line.startswith("data:"):
+            continue
+        data = line[5:].strip()
+        if data == "[DONE]":
+            break
+        try:
+            event = json.loads(data)
+        except json.JSONDecodeError:
+            continue
+        try:
+            delta = event["choices"][0].get("delta", {}).get("content") or event["choices"][0].get("text") or ""
+        except (KeyError, IndexError, TypeError, AttributeError):
+            delta = ""
+        if delta:
+            chunks.append(delta)
+            if echo:
+                print(delta, end="", flush=True)
+    return "" if echo else "".join(chunks).strip()
+
+
+def models_url(base_url: str) -> str:
+    return base_url + "/models" if base_url.rstrip("/").endswith("/v1") else base_url.rstrip("/") + "/v1/models"
+
+
+def check_endpoint(settings: dict[str, object]) -> str:
+    request = urllib.request.Request(str(models_url(str(settings["base_url"]))), headers={"Accept": "application/json"}, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=int(settings["timeout"])) as response:
+            if 200 <= response.getcode() < 300:
+                return "Endpoint health check passed: /models responded."
+            return "Endpoint health check returned HTTP {0}.".format(response.getcode())
+    except urllib.error.HTTPError as exc:
+        return "Endpoint health check returned HTTP {0}. Check base URL, auth, and runtime logs.".format(exc.code)
+    except urllib.error.URLError as exc:
+        return "Endpoint health check failed. Check LOCAL_AI_BASE_URL, port, container networking, and whether the runtime is running. Details: {0}".format(exc.reason)
+
+
+def ask_local_model(message: str, echo_stream: bool = False) -> str:
+    settings = load_settings()
+    context = trim_context(load_context(), int(settings["max_context_chars"]))
     payload = {
-        "model": model,
+        "model": settings["model"],
         "messages": [
-            {"role": "system", "content": load_system_prompt() + "\n\nContext:\n" + load_context()},
+            {"role": "system", "content": load_system_prompt() + "\n\nContext:\n" + context},
             {"role": "user", "content": message},
         ],
         "temperature": 0.2,
+        "stream": bool(settings["streaming"]),
     }
     request = urllib.request.Request(
-        base_url + "/chat/completions",
+        str(settings["base_url"]) + "/chat/completions",
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urllib.request.urlopen(request, timeout=int(settings["timeout"])) as response:
+            content_type = response.headers.get("Content-Type", "")
+            if bool(settings["streaming"]) and "text/event-stream" in content_type:
+                streamed = read_streaming_response(response, echo=echo_stream)
+                return streamed or ""
             body = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         return "Endpoint returned HTTP {0}. Check base URL, model name, and whether auth is required.".format(exc.code)
@@ -342,51 +468,63 @@ def ask_local_model(message: str) -> str:
     except json.JSONDecodeError:
         return "Endpoint responded, but the response was not valid JSON. Verify OpenAI-compatible mode."
 
-    try:
-        return body["choices"][0]["message"]["content"].strip()
-    except (KeyError, IndexError, TypeError):
-        return "Endpoint response did not look like OpenAI chat completions JSON."
+    return extract_non_streaming_content(body)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run a local OpenAI-compatible starter chat loop. No cloud API key is required by default."
+        description="Run a streaming-first local OpenAI-compatible starter chat loop. No cloud API key is required by default."
     )
-    parser.add_argument(
-        "--check-config",
-        action="store_true",
-        help="Print resolved endpoint/model settings and exit without calling the model",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show prompt, local context, and endpoint settings without calling the model",
-    )
+    parser.add_argument("--check-config", action="store_true", help="Print resolved endpoint/model/performance settings and exit without calling the model")
+    parser.add_argument("--dry-run", action="store_true", help="Show prompt, local context, and endpoint settings without calling the model")
+    parser.add_argument("--check-endpoint", action="store_true", help="Call /models once to verify the configured endpoint, then exit")
+    parser.add_argument("--warmup", action="store_true", help="Send the configured warmup prompt once before a demo, then exit")
     return parser
+
+
+def print_settings(settings: dict[str, object]) -> None:
+    print("Endpoint: {0}".format(settings["base_url"]))
+    print("Model: {0}".format(settings["model"]))
+    print("Timeout: {0}s".format(settings["timeout"]))
+    print("Streaming: {0}".format("enabled" if settings["streaming"] else "disabled"))
+    print("Max context chars: {0}".format(settings["max_context_chars"]))
+    print("Show progress: {0}".format("yes" if settings["show_progress"] else "no"))
+    print("Endpoint health check hint: {0}".format("enabled" if settings["endpoint_health_check"] else "disabled"))
+    if settings["warmup_prompt"]:
+        print("Warmup prompt: {0}".format(settings["warmup_prompt"]))
 
 
 def main() -> None:
     args = build_parser().parse_args()
-    base_url, model, timeout = load_settings()
+    settings = load_settings()
     if args.check_config:
-        print("Endpoint: {0}".format(base_url))
-        print("Model: {0}".format(model))
-        print("Timeout: {0}s".format(timeout))
+        print_settings(settings)
         print("No endpoint call was made.")
+        return
+    if args.check_endpoint:
+        print_settings(settings)
+        print(check_endpoint(settings))
+        return
+    if args.warmup:
+        print_settings(settings)
+        prompt = str(settings["warmup_prompt"] or "Say hello in one short sentence.")
+        print("Running one explicit warmup prompt. This will call the configured endpoint.")
+        print("Warmup prompt: {0}".format(prompt))
+        answer = ask_local_model(prompt, "", settings, echo_stream=False)
+        print("Warmup response received: {0}".format("yes" if answer else "no"))
         return
     if args.dry_run:
         print("Dry run: no endpoint call was made.")
-        print("Endpoint: {0}".format(base_url))
-        print("Model: {0}".format(model))
-        print("Timeout: {0}s".format(timeout))
+        print_settings(settings)
         print("System prompt preview:")
         print(load_system_prompt()[:600])
         print("Context preview:")
-        print(load_context()[:1000])
+        print(trim_context(load_context(), int(settings["max_context_chars"]))[:1000])
         print("Next: run python app.py when your local endpoint is ready.")
+        print("UX tip: streaming lowers perceived latency; use inferdoctor perf streaming to check TTFT.")
         return
-    print("Local AI starter configured for {0} with model '{1}'.".format(base_url, model))
-    print("A live endpoint call happens only after you send a message.")
+    print("Local AI starter configured for {0} with model '{1}'.".format(settings["base_url"], settings["model"]))
+    print("Streaming is {0}. A live endpoint call happens only after you send a message.".format("enabled" if settings["streaming"] else "disabled"))
     print("Type 'exit' to quit. No cloud API key is required by default.")
     while True:
         try:
@@ -398,7 +536,14 @@ def main() -> None:
             break
         if not message:
             continue
-        print("assistant> " + ask_local_model(message))
+        if settings["show_progress"]:
+            print("Connecting to local endpoint and waiting for first generated content...")
+        print("assistant> ", end="", flush=True)
+        answer = ask_local_model(message, echo_stream=bool(settings["streaming"]))
+        if answer:
+            print(answer)
+        else:
+            print()
 
 
 if __name__ == "__main__":
@@ -467,6 +612,8 @@ Edit `.env` or `config.yaml`:
 LOCAL_AI_BASE_URL=http://127.0.0.1:8000/v1
 LOCAL_AI_MODEL=local-model
 LOCAL_AI_TIMEOUT=30
+LOCAL_AI_STREAMING=true
+LOCAL_AI_MAX_CONTEXT_CHARS=4000
 ```
 
 Endpoint examples:
@@ -475,6 +622,18 @@ Endpoint examples:
 
 Use whichever runtime you already have running. The app sends requests to `/chat/completions` under that base URL.
 
+## Performance UX Defaults
+
+- `streaming: true` is enabled by default because users care about time to first token (TTFT), not just total latency.
+- `timeout_seconds` prevents a broken endpoint from hanging the demo.
+- `max_context_chars` or `context_budget` keeps prompts from becoming too large.
+- `warmup_prompt` is a safe reminder for demos; run a tiny warmup question manually before customer-facing demos.
+- Use `--dry-run` and `--check-config` before making any live endpoint call.
+- Use `--check-endpoint` only when you want one live `/models` check.
+- Use `--warmup` only when you explicitly want to send the configured warmup prompt.
+
+Switch streaming off by setting `LOCAL_AI_STREAMING=false` or `streaming: false` in `config.yaml`.
+
 ## Diagnose Before Running
 
 ```bash
@@ -482,6 +641,8 @@ inferdoctor
 inferdoctor check vllm --endpoint http://127.0.0.1:8000/v1
 inferdoctor check sglang --endpoint http://127.0.0.1:30000/v1
 inferdoctor explain openai-compatible-connection-refused
+inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model
+inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b
 ```
 {extra}
 
@@ -563,10 +724,12 @@ inferdoctor explain openai-compatible-404
 
 ## Slow responses
 
-Use a smaller model, a quantized model, or a runtime better matched to your hardware.
+Enable streaming, warm up the endpoint before demos, reduce context size, or use a smaller/quantized model.
 Run:
 
 ```bash
+inferdoctor perf streaming --endpoint http://127.0.0.1:8000/v1 --model local-model
+inferdoctor optimize endpoint --runtime vllm --vram 24 --model-size 14b
 inferdoctor model fit --size 14b --quant q4 --vram 24
 inferdoctor recommend --goal customer-service --vram 24
 ```
@@ -594,8 +757,8 @@ def _customer_service_files() -> dict[str, str]:
             data_loader,
         ),
         "requirements.txt": "# Standard library only. Add packages here if you extend the demo.\n",
-        ".env.example": "LOCAL_AI_BASE_URL=http://127.0.0.1:8000/v1\nLOCAL_AI_MODEL=local-model\nLOCAL_AI_TIMEOUT=30\n",
-        "config.yaml": "endpoint: http://127.0.0.1:8000/v1\nmodel: local-model\ntimeout: 30\n",
+        ".env.example": CHAT_ENV_EXAMPLE,
+        "config.yaml": CHAT_CONFIG,
         "prompts/system_prompt.md": """You are a concise customer service assistant for Acme Local Shop.
 
 Rules:
@@ -650,8 +813,8 @@ def _restaurant_ordering_files() -> dict[str, str]:
             data_loader,
         ),
         "requirements.txt": "# Standard library only. Add packages here if you extend the demo.\n",
-        ".env.example": "LOCAL_AI_BASE_URL=http://127.0.0.1:8000/v1\nLOCAL_AI_MODEL=local-model\nLOCAL_AI_TIMEOUT=30\n",
-        "config.yaml": "endpoint: http://127.0.0.1:8000/v1\nmodel: local-model\ntimeout: 30\n",
+        ".env.example": CHAT_ENV_EXAMPLE,
+        "config.yaml": CHAT_CONFIG,
         "prompts/system_prompt.md": """You are a local restaurant ordering assistant.
 
 Rules:
@@ -726,7 +889,12 @@ def _local_doc_qa_files() -> dict[str, str]:
 2. Run `python ingest.py` to build a plain-text local index.
 3. Run `python query.py` to find relevant local context.
 4. Run `python query.py --dry-run` or `python query.py --check-config` before using a live endpoint.
-5. Use the printed context with your local endpoint, or extend `query.py` to call `/chat/completions`.
+5. Keep `streaming: true`, start with `top_k: 4`, and show retrieval progress before generation.
+6. Use the printed context with your local endpoint, or extend `query.py` to call `/chat/completions`.
+
+## RAG UX Notes
+
+Retrieval and generation are separate phases. If retrieval takes time, show progress before the first generated token. Too many chunks increase prompt size and can make TTFT worse, so keep a context budget and tune `top_k` carefully.
 """,
         ),
         "ingest.py": """from __future__ import annotations
@@ -758,8 +926,11 @@ if __name__ == "__main__":
         "query.py": """from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
+import urllib.error
+import urllib.request
 
 INDEX = Path("index.txt")
 CONFIG = Path("config.yaml")
@@ -794,13 +965,43 @@ def read_simple_config(path: Path) -> dict[str, str]:
     return values
 
 
-def load_settings() -> tuple[str, str, str]:
+def as_bool(value: str | None, default: bool = False) -> bool:
+    if value is None or value == "":
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def as_int(value: str | None, default: int) -> int:
+    try:
+        parsed = int(value or "")
+    except ValueError:
+        return default
+    return parsed if parsed > 0 else default
+
+
+def load_settings() -> dict[str, object]:
     env_file = read_env_file(ENV_FILE)
     config = read_simple_config(CONFIG)
     base_url = os.environ.get("LOCAL_AI_BASE_URL") or env_file.get("LOCAL_AI_BASE_URL") or config.get("endpoint") or DEFAULT_BASE_URL
     model = os.environ.get("LOCAL_AI_MODEL") or env_file.get("LOCAL_AI_MODEL") or config.get("model") or DEFAULT_MODEL
     retrieval = config.get("retrieval") or "keyword"
-    return base_url.rstrip("/"), model, retrieval
+    streaming_text = os.environ.get("LOCAL_AI_STREAMING") or env_file.get("LOCAL_AI_STREAMING") or config.get("streaming")
+    top_k_text = os.environ.get("LOCAL_AI_TOP_K") or env_file.get("LOCAL_AI_TOP_K") or config.get("top_k")
+    context_text = os.environ.get("LOCAL_AI_CONTEXT_BUDGET") or env_file.get("LOCAL_AI_CONTEXT_BUDGET") or config.get("context_budget")
+    show_progress_text = os.environ.get("LOCAL_AI_SHOW_PROGRESS") or env_file.get("LOCAL_AI_SHOW_PROGRESS") or config.get("show_progress")
+    warmup_prompt = os.environ.get("LOCAL_AI_WARMUP_PROMPT") or env_file.get("LOCAL_AI_WARMUP_PROMPT") or config.get("warmup_prompt") or ""
+    timeout_text = os.environ.get("LOCAL_AI_TIMEOUT") or env_file.get("LOCAL_AI_TIMEOUT") or config.get("timeout_seconds") or config.get("timeout")
+    return {
+        "base_url": base_url.rstrip("/"),
+        "model": model,
+        "retrieval": retrieval,
+        "streaming": as_bool(streaming_text, True),
+        "top_k": as_int(top_k_text, 4),
+        "context_budget": as_int(context_text, 4000),
+        "show_progress": as_bool(show_progress_text, True),
+        "warmup_prompt": warmup_prompt,
+        "timeout": as_int(timeout_text, 30),
+    }
 
 
 def tokenize(text: str) -> set[str]:
@@ -815,61 +1016,180 @@ def score(text: str, question: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Search the local keyword index and print the most relevant Markdown chunks."
+        description="Search the local keyword index and print the most relevant Markdown chunks. No model endpoint is called."
     )
     parser.add_argument("question", nargs="?", help="Question to search for; omit for interactive prompt")
-    parser.add_argument("--check-config", action="store_true", help="Print endpoint/model/retrieval settings and exit")
+    parser.add_argument("--check-config", action="store_true", help="Print endpoint/model/retrieval/performance settings and exit")
     parser.add_argument("--dry-run", action="store_true", help="Show a safe retrieval preview without calling a model endpoint")
+    parser.add_argument("--check-endpoint", action="store_true", help="Call /models once to verify the configured endpoint, then exit")
+    parser.add_argument("--warmup", action="store_true", help="Send the configured warmup prompt once, then exit")
+    parser.add_argument("--generate", action="store_true", help="After retrieval, send selected context to the configured endpoint")
     return parser
+
+
+def print_settings(settings: dict[str, object]) -> None:
+    print("Endpoint: {0}".format(settings["base_url"]))
+    print("Model: {0}".format(settings["model"]))
+    print("Retrieval: {0}".format(settings["retrieval"]))
+    print("Streaming: {0}".format("enabled" if settings["streaming"] else "disabled"))
+    print("top_k: {0}".format(settings["top_k"]))
+    print("Context budget: {0} chars".format(settings["context_budget"]))
+    print("Timeout: {0}s".format(settings["timeout"]))
+    print("Show progress: {0}".format("yes" if settings["show_progress"] else "no"))
+    if settings["warmup_prompt"]:
+        print("Warmup prompt: {0}".format(settings["warmup_prompt"]))
+
+
+def load_chunks() -> list[str]:
+    if not INDEX.exists():
+        return []
+    return [chunk for chunk in INDEX.read_text(encoding="utf-8").split("\\n\\n---\\n\\n") if chunk.strip()]
+
+
+def models_url(base_url: str) -> str:
+    return base_url + "/models" if base_url.rstrip("/").endswith("/v1") else base_url.rstrip("/") + "/v1/models"
+
+
+def check_endpoint(settings: dict[str, object]) -> str:
+    request = urllib.request.Request(str(models_url(str(settings["base_url"]))), headers={"Accept": "application/json"}, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=int(settings["timeout"])) as response:
+            if 200 <= response.getcode() < 300:
+                return "Endpoint health check passed: /models responded."
+            return "Endpoint health check returned HTTP {0}.".format(response.getcode())
+    except urllib.error.HTTPError as exc:
+        return "Endpoint health check returned HTTP {0}. Check base URL, auth, and runtime logs.".format(exc.code)
+    except urllib.error.URLError as exc:
+        return "Endpoint health check failed. Check LOCAL_AI_BASE_URL, port, container networking, and whether the runtime is running. Details: {0}".format(exc.reason)
+
+
+def selected_context(ranked: list[str], settings: dict[str, object]) -> str:
+    joined = "\\n\\n---\\n\\n".join(ranked[: int(settings["top_k"])])
+    return joined[: int(settings["context_budget"])]
+
+
+def read_streaming_response(response) -> str:
+    parts: list[str] = []
+    for raw_line in response:
+        line = raw_line.decode("utf-8", errors="replace").strip()
+        if not line or not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        if payload == "[DONE]":
+            break
+        try:
+            event = json.loads(payload)
+            content = event["choices"][0].get("delta", {}).get("content") or ""
+        except (json.JSONDecodeError, KeyError, IndexError, TypeError, AttributeError):
+            content = ""
+        if content:
+            parts.append(str(content))
+            print(str(content), end="", flush=True)
+    return "".join(parts)
+
+
+def ask_local_model(question: str, context: str, settings: dict[str, object], echo_stream: bool = True) -> str:
+    payload = {
+        "model": settings["model"],
+        "messages": [
+            {"role": "system", "content": "Answer from the provided local context. If the context is insufficient, say so."},
+            {"role": "user", "content": "Context:\\n{0}\\n\\nQuestion: {1}".format(context, question)},
+        ],
+        "temperature": 0.2,
+        "max_tokens": 256,
+        "stream": bool(settings["streaming"]),
+    }
+    request = urllib.request.Request(
+        str(settings["base_url"]) + "/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=int(settings["timeout"])) as response:
+            content_type = response.headers.get("Content-Type", "")
+            if settings["streaming"] and "text/event-stream" in content_type:
+                return read_streaming_response(response) if echo_stream else ""
+            body = json.loads(response.read().decode("utf-8"))
+            return str(body["choices"][0]["message"]["content"]).strip()
+    except urllib.error.HTTPError as exc:
+        return "Endpoint returned HTTP {0}. Check base URL, model name, and whether auth is required.".format(exc.code)
+    except urllib.error.URLError as exc:
+        return "Could not reach local endpoint. Details: {0}".format(exc.reason)
+    except (json.JSONDecodeError, KeyError, IndexError, TypeError):
+        return "Endpoint response did not look like OpenAI chat completions JSON."
 
 
 def main() -> None:
     args = build_parser().parse_args()
-    base_url, model, retrieval = load_settings()
+    settings = load_settings()
     if args.check_config:
-        print("Endpoint: {0}".format(base_url))
-        print("Model: {0}".format(model))
-        print("Retrieval: {0}".format(retrieval))
+        print_settings(settings)
         print("No endpoint call was made.")
+        return
+    if args.check_endpoint:
+        print_settings(settings)
+        print(check_endpoint(settings))
+        return
+    if args.warmup:
+        print_settings(settings)
+        prompt = str(settings["warmup_prompt"] or "Say hello in one short sentence.")
+        print("Running one explicit warmup prompt. This will call the configured endpoint.")
+        print("Warmup prompt: {0}".format(prompt))
+        answer = ask_local_model(prompt, "", settings, echo_stream=False)
+        print("Warmup response received: {0}".format("yes" if answer else "no"))
         return
     if args.dry_run:
         print("Dry run: no endpoint call was made.")
-        print("Endpoint: {0}".format(base_url))
-        print("Model: {0}".format(model))
-        print("Retrieval: {0}".format(retrieval))
-        if INDEX.exists():
-            chunks = [chunk for chunk in INDEX.read_text(encoding="utf-8").split("\\n\\n---\\n\\n") if chunk.strip()]
+        print_settings(settings)
+        if settings["show_progress"]:
+            print("Retrieval progress: load index -> rank chunks -> prepare context -> generate with streaming endpoint.")
+        chunks = load_chunks()
+        if chunks:
             print("Indexed chunks: {0}".format(len(chunks)))
-            if chunks:
-                print("Context preview:")
-                print(chunks[0][:1000])
+            print("Context preview:")
+            print(chunks[0][: int(settings["context_budget"])][:1000])
         else:
             print("Index is missing. Run python ingest.py before real queries.")
         print("Next: run python ingest.py, then python query.py 'your question'.")
+        print("UX tip: too many chunks can hurt TTFT; start with top_k=4 and show retrieval progress before generation.")
         return
-    if not INDEX.exists():
+    chunks = load_chunks()
+    if not chunks:
         print("Run python ingest.py first.")
         return
-    chunks = [chunk for chunk in INDEX.read_text(encoding="utf-8").split("\\n\\n---\\n\\n") if chunk.strip()]
     question = args.question or input("question> ").strip()
     ranked = sorted(chunks, key=lambda chunk: score(chunk, question), reverse=True)
     print("\\nTop local context matches:\\n")
-    for index, chunk in enumerate(ranked[:3], start=1):
+    for index, chunk in enumerate(ranked[: int(settings["top_k"])], start=1):
         print("[{0}] score={1}".format(index, score(chunk, question)))
         print(chunk[:1200])
         print()
     if not ranked:
         print("No documents indexed.")
-    print("Next: send this context to your configured local OpenAI-compatible endpoint.")
-    print("Tip: run inferdoctor check vllm or inferdoctor check sglang if the endpoint fails.")
+    if args.generate:
+        context = selected_context(ranked, settings)
+        if settings["show_progress"]:
+            print("Retrieval complete: selected {0} local context match(es).".format(min(len(ranked), int(settings["top_k"]))))
+            print("Connecting to local endpoint and waiting for first generated content...")
+        print("assistant> ", end="", flush=True)
+        answer = ask_local_model(question, context, settings, echo_stream=bool(settings["streaming"]))
+        if answer:
+            print(answer)
+        else:
+            print()
+    else:
+        print("Next: send this context to your configured local OpenAI-compatible endpoint, or run with --generate when ready.")
+    print("Tip: enable streaming and show retrieval progress so users are not left waiting silently.")
+    print("Tip: run inferdoctor optimize rag --top-k {0} --streaming if the app feels slow.".format(settings["top_k"]))
 
 
 if __name__ == "__main__":
     main()
 """,
         "requirements.txt": "# Standard library only. Add packages here if you extend the demo.\n",
-        ".env.example": "LOCAL_AI_BASE_URL=http://127.0.0.1:8000/v1\nLOCAL_AI_MODEL=local-model\nLOCAL_AI_TIMEOUT=30\n",
-        "config.yaml": "endpoint: http://127.0.0.1:8000/v1\nmodel: local-model\ntimeout: 30\nretrieval: keyword\n",
+        ".env.example": DOC_QA_ENV_EXAMPLE,
+        "config.yaml": DOC_QA_CONFIG,
         "docs/sample.md": """# Sample Local Document
 
 InferDoctor helps diagnose local AI stacks and guide setup steps.
@@ -945,3 +1265,210 @@ def render_template_create_summary(name: str, output_dir: str, written: list[str
         "  inferdoctor explain openai-compatible-connection-refused",
     ])
     return "\n".join(lines)
+
+
+COMPOSE_TEMPLATE_NAMES = ["customer-service", "restaurant-ordering", "local-doc-qa", "open-webui", "dify-rag"]
+
+
+def compose_template_names() -> List[str]:
+    return list(COMPOSE_TEMPLATE_NAMES)
+
+
+def _compose_readme(name: str, services: str) -> str:
+    return """# InferDoctor Docker Compose Starter: {name}
+
+This directory contains optional Docker Compose guidance generated by InferDoctor.
+It is a starter scaffold only.
+
+## Safety
+
+InferDoctor only generated these files. It did not pull images, start containers,
+install runtimes, download models, call endpoints, or modify system services.
+
+## Files
+
+- docker-compose.yml: optional service layout to review and adapt.
+- .env.example: safe placeholder settings. Copy it to .env before use.
+- config.yaml: InferDoctor endpoint hints for diagnostics.
+- README.md: this guide.
+
+## Services Included
+
+{services}
+
+## Suggested Review Flow
+
+    cp .env.example .env
+    inferdoctor
+    inferdoctor template validate .
+
+Review docker-compose.yml manually before running Docker commands.
+
+## Important
+
+The generated Compose file may reference public container images as examples, but
+InferDoctor does not pull or run them. Review image names, ports, volumes, and
+runtime requirements for your machine before using Docker.
+""".format(name=name, services=services)
+
+
+def _compose_files(name: str) -> dict[str, str]:
+    common_env = """LOCAL_AI_BASE_URL=http://host.docker.internal:8000/v1
+LOCAL_AI_MODEL=local-model
+"""
+    common_config = """endpoints:
+  vllm: http://127.0.0.1:8000/v1
+  sglang: http://127.0.0.1:30000/v1
+"""
+    if name in {"customer-service", "restaurant-ordering", "local-doc-qa"}:
+        service_name = name.replace("-", "_")
+        command = "python app.py --check-config" if name != "local-doc-qa" else "python query.py --check-config"
+        compose = """services:
+  {service_name}:
+    image: python:3.12-slim
+    working_dir: /app
+    volumes:
+      - ./app:/app:ro
+    env_file:
+      - .env
+    command: ["sh", "-lc", "{command}"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+""".format(service_name=service_name, command=command)
+        services = "- {0}: placeholder Python service for the generated starter app.".format(service_name)
+        return {
+            "README.md": _compose_readme(name, services),
+            "docker-compose.yml": compose,
+            ".env.example": common_env,
+            "config.yaml": common_config + "template: {0}".format(name) + chr(10),
+        }
+    if name == "open-webui":
+        compose = """services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    ports:
+      - "3000:8080"
+    environment:
+      - OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1
+      - OPENAI_API_KEY=local-placeholder
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - open-webui-data:/app/backend/data
+
+volumes:
+  open-webui-data:
+"""
+        services = "- open-webui: optional browser UI pointed at a local OpenAI-compatible endpoint."
+        return {
+            "README.md": _compose_readme(name, services),
+            "docker-compose.yml": compose,
+            ".env.example": """OPENAI_API_BASE_URL=http://host.docker.internal:8000/v1
+OPENAI_API_KEY=local-placeholder
+""",
+            "config.yaml": """endpoints:
+  openwebui: http://127.0.0.1:3000
+  vllm: http://127.0.0.1:8000/v1
+""",
+        }
+    if name == "dify-rag":
+        compose = """services:
+  dify-api-placeholder:
+    image: langgenius/dify-api:latest
+    profiles: ["manual-review"]
+    environment:
+      - CONSOLE_API_URL=http://127.0.0.1:5001
+      - SERVICE_API_URL=http://127.0.0.1:5001
+      - OPENAI_API_BASE=http://host.docker.internal:8000/v1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  dify-web-placeholder:
+    image: langgenius/dify-web:latest
+    profiles: ["manual-review"]
+    ports:
+      - "5001:3000"
+"""
+        services = "- dify-api-placeholder and dify-web-placeholder: review-only Dify service hints using a manual-review profile."
+        return {
+            "README.md": _compose_readme(name, services),
+            "docker-compose.yml": compose,
+            ".env.example": """DIFY_BASE_URL=http://127.0.0.1:5001
+LOCAL_AI_BASE_URL=http://host.docker.internal:8000/v1
+""",
+            "config.yaml": """endpoints:
+  dify: http://127.0.0.1:5001
+  vllm: http://127.0.0.1:8000/v1
+""",
+        }
+    raise KeyError("compose generation is not available for template '{0}'".format(name))
+
+def create_compose_project(name: str, output_dir: str) -> list[str]:
+    if name not in COMPOSE_TEMPLATE_NAMES:
+        available = ", ".join(COMPOSE_TEMPLATE_NAMES)
+        raise KeyError("compose generation is available for: {0}".format(available))
+    root = Path(output_dir).expanduser()
+    files = _compose_files(name)
+    written: list[str] = []
+    for relative, content in files.items():
+        destination = root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(content, encoding="utf-8")
+        written.append(str(destination))
+    return written
+
+
+def render_compose_create_summary(name: str, output_dir: str, written: list[str]) -> str:
+    lines = [
+        "InferDoctor Docker Compose Files Created",
+        "=" * 57,
+        "Template: {0}".format(name),
+        "Output directory: {0}".format(output_dir),
+        "",
+        "Generated files:",
+    ]
+    lines.extend("  - {0}".format(path) for path in written)
+    lines.extend([
+        "",
+        "Safety:",
+        "  InferDoctor only generated files. It did not pull images, start containers, install runtimes, or call endpoints.",
+        "",
+        "Next steps:",
+        "  1. cd {0}".format(output_dir),
+        "  2. cp .env.example .env",
+        "  3. Review docker-compose.yml manually.",
+        "  4. Run inferdoctor to diagnose your host before starting services.",
+        "",
+        "Optional only after review:",
+        "  docker compose config",
+    ])
+    return chr(10).join(lines)
+
+
+
+def render_template_registry() -> str:
+    lines = [
+        "InferDoctor Template Registry",
+        "=" * 57,
+        "Current source: built-in templates shipped with InferDoctor.",
+        "Remote/community template registries are not enabled yet.",
+        "",
+        "Built-in templates:",
+    ]
+    for template in list_templates():
+        lines.append("  - {0}: {1}".format(template.name, template.title))
+    lines.extend([
+        "",
+        "Future registry principles:",
+        "  - No remote template execution by default.",
+        "  - Templates should be generated locally and validated before use.",
+        "  - Template metadata should declare files, runtime assumptions, and safety boundaries.",
+        "  - InferDoctor should never install heavy runtimes, download models, or start services without explicit user action.",
+        "",
+        "Useful commands:",
+        "  inferdoctor template list",
+        "  inferdoctor template show customer-service",
+        "  inferdoctor template validate ./customer-service-demo",
+        "  inferdoctor template smoke-test ./customer-service-demo",
+    ])
+    return chr(10).join(lines)
