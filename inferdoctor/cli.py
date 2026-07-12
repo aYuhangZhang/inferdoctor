@@ -15,6 +15,7 @@ from inferdoctor.core.config import (
     normalize_endpoint,
 )
 from inferdoctor.core.explain import explain_topics, render_explanation
+from inferdoctor.core.endpoint_safety import classify_endpoint, render_endpoint_safety_error
 from inferdoctor.core.experience import (
     apply_profile_to_optimization_report,
     apply_profile_to_perf_result,
@@ -324,6 +325,7 @@ def _parser() -> argparse.ArgumentParser:
     perf_endpoint.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
     perf_endpoint.add_argument("--output", help="Write report to a file instead of stdout")
     perf_endpoint.add_argument("--profile", choices=profile_names(), help="Application experience profile for readiness guidance")
+    perf_endpoint.add_argument("--allow-non-local", action="store_true", help="Allow a tiny live smoke-test prompt to a LAN/private endpoint you control")
     perf_streaming = perf_subparsers.add_parser(
         "streaming",
         help="Smoke-test streaming TTFT for an OpenAI-compatible endpoint",
@@ -341,6 +343,7 @@ def _parser() -> argparse.ArgumentParser:
     perf_streaming.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
     perf_streaming.add_argument("--output", help="Write report to a file instead of stdout")
     perf_streaming.add_argument("--profile", choices=profile_names(), help="Application experience profile for readiness guidance")
+    perf_streaming.add_argument("--allow-non-local", action="store_true", help="Allow a tiny live smoke-test prompt to a LAN/private endpoint you control")
 
     perf_compare = perf_subparsers.add_parser(
         "compare",
@@ -889,10 +892,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.command == "perf":
         if args.perf_command == "endpoint":
+            safety = classify_endpoint(args.endpoint)
+            if safety.category == "invalid" or (safety.requires_explicit_allow and not args.allow_non_local):
+                print("inferdoctor: {0}".format(render_endpoint_safety_error(safety)), file=sys.stderr)
+                return 2
             result = apply_profile_to_perf_result(run_endpoint_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup), args.profile)
             _emit_output(_render_perf_output(result, args.format), args.output)
             return 0
         if args.perf_command == "streaming":
+            safety = classify_endpoint(args.endpoint)
+            if safety.category == "invalid" or (safety.requires_explicit_allow and not args.allow_non_local):
+                print("inferdoctor: {0}".format(render_endpoint_safety_error(safety)), file=sys.stderr)
+                return 2
             result = apply_profile_to_perf_result(run_streaming_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup), args.profile)
             _emit_output(_render_perf_output(result, args.format), args.output)
             return 0
