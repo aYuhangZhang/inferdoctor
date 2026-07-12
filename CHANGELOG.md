@@ -1,9 +1,16 @@
 # Changelog
 
-## Unreleased / v0.5.0
+## Unreleased
+
+- Nothing yet.
+
+## v0.5.0
 
 ### Development Notes
 
+- Performance UX smoke tests for OpenAI-compatible endpoints, including TTFT, streaming, bounded cold/warm runs, structured reports, and endpoint redaction.
+- Endpoint and RAG optimization advice for local AI user experience.
+- Streaming-first starter templates with safe dry-run and config-check paths.
 - Docker Compose starter file generation for selected templates.
 - Safe stack bootstrap file generation for starter projects and setup plans.
 - Improved Dify, Open WebUI, and Ollama + Open WebUI starter guidance.
