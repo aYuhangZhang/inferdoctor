@@ -447,3 +447,32 @@ def test_experience_readiness_thresholds_are_transparent():
     ))
     assert failure.category == "Endpoint/configuration failure"
     assert failure.confidence == "high"
+
+
+def test_perf_json_schema_uses_stable_english_fields():
+    result = PerfResult(
+        mode="streaming",
+        endpoint="http://user:secret@127.0.0.1:8000/v1?api_key=hidden",
+        model="local-model",
+        reachable=True,
+        openai_compatible="yes",
+        streaming_supported="confirmed",
+        successful_runs=1,
+        failed_runs=0,
+        user_experience="Responsive for interactive use",
+    )
+
+    document = json.loads(render_perf_json(result))
+
+    assert document["schema_version"] == "inferdoctor.perf.v1"
+    assert document["test_type"] == "streaming"
+    assert document["streaming_observed"] == "confirmed"
+    assert "secret" not in document["endpoint"]
+    assert "hidden" not in document["endpoint"]
+    assert "api_key=REDACTED" in document["endpoint"]
+    markdown = render_perf_markdown(result)
+    console = render_perf_result(result)
+    assert "secret" not in markdown
+    assert "hidden" not in markdown
+    assert "secret" not in console
+    assert "hidden" not in console

@@ -105,6 +105,21 @@ def test_global_language_rejects_non_dashboard_command(capsys):
     assert "--language currently applies only" in capsys.readouterr().err
 
 
+def test_global_language_rejects_perf_command(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main([
+            "--language",
+            "zh",
+            "perf",
+            "endpoint",
+            "--endpoint",
+            "http://127.0.0.1:8000/v1",
+        ])
+
+    assert exc.value.code == 2
+    assert "--language currently applies only" in capsys.readouterr().err
+
+
 @patch("inferdoctor.cli._results_for_target", return_value=_sample_run())
 def test_report_command_writes_json(results, tmp_path):
     output = tmp_path / "report.json"

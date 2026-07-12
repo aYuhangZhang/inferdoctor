@@ -743,7 +743,7 @@ def render_perf_result(result: PerfResult) -> str:
         "InferDoctor Performance UX Smoke Test",
         "=" * 57,
         "Mode: {0}".format(result.mode),
-        "Endpoint: {0}".format(result.endpoint),
+        "Endpoint: {0}".format(sanitize_endpoint(result.endpoint)),
         "Model: {0}".format(result.model or "not provided"),
         "Reachable: {0}".format("yes" if result.reachable else "no"),
         "OpenAI-compatible check: {0}".format(result.openai_compatible),
@@ -809,7 +809,7 @@ def perf_result_to_dict(result: PerfResult) -> Dict[str, Any]:
     return {
         "schema_version": result.schema_version,
         "timestamp": result.timestamp,
-        "endpoint": result.endpoint,
+        "endpoint": sanitize_endpoint(result.endpoint),
         "model": result.model,
         "test_type": result.mode,
         "streaming_requested": result.mode == "streaming",
@@ -868,7 +868,7 @@ def render_perf_markdown(result: PerfResult) -> str:
     lines = [
         "# InferDoctor Performance Smoke Test",
         "",
-        "- Endpoint: `{0}`".format(result.endpoint),
+        "- Endpoint: `{0}`".format(sanitize_endpoint(result.endpoint)),
         "- Model: `{0}`".format(result.model or "not provided"),
         "- Test type: `{0}`".format(result.mode),
         "- Streaming observed: `{0}`".format(result.streaming_supported),
