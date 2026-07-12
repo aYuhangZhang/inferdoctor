@@ -39,6 +39,15 @@ from inferdoctor.core.perf_baseline import (
 )
 from inferdoctor.core.perf_compare import compare_performance_files, render_comparison
 from inferdoctor.core.recommendations import recommend_stack, render_recommendation
+from inferdoctor.core.quickstart import (
+    QUICKSTART_GOALS,
+    QUICKSTART_HARDWARE,
+    QUICKSTART_LOCATIONS,
+    QUICKSTART_PREFERENCES,
+    QUICKSTART_RUNTIMES,
+    build_quickstart_plan,
+    render_quickstart_plan,
+)
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
 from inferdoctor.core.setup import GOALS, PREFERENCES, RUNTIMES, recommend_setup, render_setup_plan
@@ -475,6 +484,22 @@ def _parser() -> argparse.ArgumentParser:
         type=_positive_float,
         help="Override detected VRAM in GiB",
     )
+
+    quickstart = subparsers.add_parser(
+        "quickstart",
+        help="Plan a guided local or private AI app quickstart",
+        description=(
+            "Recommend a stack, template, endpoint configuration path, validation commands, "
+            "and performance verification steps. No installation is performed."
+        ),
+        epilog="Examples: inferdoctor quickstart customer-service --preference easiest | inferdoctor quickstart rag --endpoint http://192.168.1.20:8000/v1",
+    )
+    quickstart.add_argument("goal", nargs="?", choices=QUICKSTART_GOALS, help="What you want to build")
+    quickstart.add_argument("--preference", choices=QUICKSTART_PREFERENCES, default="easiest", help="Optimize for easiest setup or performance")
+    quickstart.add_argument("--endpoint", help="Existing local, LAN, or private OpenAI-compatible endpoint")
+    quickstart.add_argument("--location", choices=QUICKSTART_LOCATIONS, help="Where the endpoint runs: local, lan, or endpoint")
+    quickstart.add_argument("--hardware", choices=QUICKSTART_HARDWARE, default="auto", help="Hardware hint")
+    quickstart.add_argument("--runtime", choices=QUICKSTART_RUNTIMES, help="Existing runtime if known")
 
     init = subparsers.add_parser(
         "init",
@@ -936,6 +961,29 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 )
             )
         )
+        return 0
+    if args.command == "quickstart":
+        goal = args.goal
+        preference = args.preference
+        location = args.location
+        hardware = args.hardware
+        runtime = args.runtime
+        endpoint = args.endpoint
+        interactive = sys.stdin.isatty() and goal is None and endpoint is None and runtime is None
+        if interactive:
+            goal = input("What do you want to build? [customer-service/restaurant-ordering/document-qa/rag/local-api/not-sure]: " ).strip() or None
+            preference = input("Prefer easiest setup or performance? [easiest/performance]: " ).strip() or preference
+            location = input("Endpoint location? [local/lan/endpoint]: " ).strip() or location
+            hardware = input("Hardware? [auto/cpu/gpu]: " ).strip() or hardware
+            runtime = input("Existing runtime? [ollama/vllm/sglang/xinference/openai-compatible/not-sure]: " ).strip() or runtime
+        print(render_quickstart_plan(build_quickstart_plan(
+            goal=goal,
+            preference=preference,
+            endpoint=endpoint,
+            location=location,
+            hardware=hardware,
+            runtime=runtime,
+        )))
         return 0
     if args.command == "init":
         goal = args.goal
