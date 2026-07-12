@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import locale
 import os
-from typing import Dict
+from typing import Dict, Mapping, Optional
 
 SUPPORTED_LANGUAGES = ("auto", "en", "zh", "ja")
 
@@ -88,24 +87,27 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
 }
 
 
-def detect_system_language() -> str:
-    candidates = []
-    locale_values = locale.getlocale()
-    if locale_values[0]:
-        candidates.append(locale_values[0])
-    env_locale = os.environ.get("LANG") or os.environ.get("LANGUAGE")
-    if env_locale:
-        candidates.append(env_locale)
+def _language_from_locale(value: str) -> Optional[str]:
+    normalized = value.strip().split(".")[0].replace("-", "_").lower()
+    if not normalized or normalized in {"c", "posix"}:
+        return None
+    if normalized.startswith("zh"):
+        return "zh"
+    if normalized.startswith("ja"):
+        return "ja"
+    if normalized.startswith("en"):
+        return "en"
+    return None
 
-    for candidate in candidates:
-        normalized = candidate.split(".")[0].replace("-", "_").lower()
-        if normalized.startswith("zh"):
-            return "zh"
-        if normalized.startswith("ja"):
-            return "ja"
-        if normalized.startswith("en"):
-            return "en"
 
+def detect_system_language(env: Optional[Mapping[str, str]] = None) -> str:
+    environment = os.environ if env is None else env
+    for key in ("LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"):
+        raw_value = environment.get(key, "")
+        for candidate in raw_value.split(":"):
+            detected = _language_from_locale(candidate)
+            if detected:
+                return detected
     return "en"
 
 
