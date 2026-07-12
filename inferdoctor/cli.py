@@ -29,6 +29,7 @@ from inferdoctor.core.perf_baseline import (
     render_baseline_markdown,
     render_baseline_summary,
 )
+from inferdoctor.core.perf_compare import compare_performance_files, render_comparison
 from inferdoctor.core.recommendations import recommend_stack, render_recommendation
 from inferdoctor.core.runner import run_checks
 from inferdoctor.core.scenarios import evaluate_scenarios, render_scenarios, scenario_names
@@ -296,6 +297,21 @@ def _parser() -> argparse.ArgumentParser:
     perf_streaming.add_argument("--warmup", type=_perf_warmup, default=0, help="Warmup request count, bounded to 0-1 and excluded from metrics")
     perf_streaming.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
     perf_streaming.add_argument("--output", help="Write report to a file instead of stdout")
+
+    perf_compare = perf_subparsers.add_parser(
+        "compare",
+        help="Compare two performance smoke-test reports or baselines",
+        description=(
+            "Compare before-and-after InferDoctor performance smoke-test JSON files. "
+            "The comparison is heuristic and warns when inputs are not directly comparable."
+        ),
+        epilog="Examples: inferdoctor perf compare before.json after.json | inferdoctor perf compare --baseline before.json --candidate after.json --format markdown",
+    )
+    perf_compare.add_argument("paths", nargs="*", help="Optional positional baseline and candidate JSON paths")
+    perf_compare.add_argument("--baseline", help="Baseline JSON path or saved baseline name")
+    perf_compare.add_argument("--candidate", help="Candidate JSON path or saved baseline name")
+    perf_compare.add_argument("--format", choices=("console", "json", "markdown"), default="console", help="Output format")
+    perf_compare.add_argument("--output", help="Write comparison output to this file")
 
     perf_baseline = perf_subparsers.add_parser(
         "baseline",
@@ -778,6 +794,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if args.perf_command == "streaming":
             result = run_streaming_smoke(args.endpoint, args.model, args.timeout, runs=args.runs, warmup=args.warmup)
             _emit_output(_render_perf_output(result, args.format), args.output)
+            return 0
+        if args.perf_command == "compare":
+            paths = list(args.paths or [])
+            if len(paths) > 2:
+                print("inferdoctor: perf compare accepts at most two positional paths", file=sys.stderr)
+                return 2
+            baseline_path = args.baseline or (paths[0] if len(paths) >= 1 else None)
+            candidate_path = args.candidate or (paths[1] if len(paths) >= 2 else None)
+            if not baseline_path or not candidate_path:
+                print("inferdoctor: perf compare requires a baseline and candidate JSON path", file=sys.stderr)
+                return 2
+            try:
+                comparison = compare_performance_files(baseline_path, candidate_path)
+            except ValueError as exc:
+                print("inferdoctor: {0}".format(exc), file=sys.stderr)
+                return 2
+            _emit_output(render_comparison(comparison, args.format), args.output)
             return 0
         if args.perf_command == "baseline":
             try:
